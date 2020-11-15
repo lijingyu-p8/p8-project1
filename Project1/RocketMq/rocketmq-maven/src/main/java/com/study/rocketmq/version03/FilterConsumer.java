@@ -1,23 +1,22 @@
-package com.study.rocketmq.version02;
+package com.study.rocketmq.version03;
 
 import java.util.List;
 
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
+import org.apache.rocketmq.client.consumer.MessageSelector;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.common.message.MessageExt;
-import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 
-public class Consumer {
+public class FilterConsumer {
 	public static void main(String[] args) throws Exception {
-		// 设置消费组(注意，同一组，不能关注不同的topic以及tag等的过滤，否则消息会混乱)
+		// 设置消费组(注意，同一组，不能关注不同的topic以及tag等的过滤，否则消息会乱)
 		DefaultMQPushConsumer defaultMQPushConsumer = new DefaultMQPushConsumer("consumerGroup01");
 		defaultMQPushConsumer.setNamesrvAddr("192.168.73.200:9876");
-		// 设置消息过滤器，*为不过啦
-		String messageSelector = "*";
 		// 订阅topic的消息
-		defaultMQPushConsumer.subscribe("topic01", messageSelector);
+		MessageSelector bySql = MessageSelector.bySql("age > 10");
+		defaultMQPushConsumer.subscribe("topic01", bySql);
 		defaultMQPushConsumer.registerMessageListener(new MessageListenerConcurrently() {
 
 			@Override
@@ -34,11 +33,6 @@ public class Consumer {
 				return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
 			}
 		});
-		// 默认集群模式，可以由此设置为广播模式
-		// 消费进度由consumer维护
-		// 保证每个消费者消费一次消息
-		// 消费失败的消息不会重投
-//		defaultMQPushConsumer.setMessageModel(MessageModel.BROADCASTING);
 		defaultMQPushConsumer.start();
 		System.out.println("Consumer start...");
 	}
