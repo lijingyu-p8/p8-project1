@@ -15,8 +15,8 @@ public class QueueConsumer {
 		DefaultMQPushConsumer defaultMQPushConsumer = new DefaultMQPushConsumer("consumerGroup01");
 		defaultMQPushConsumer.setNamesrvAddr("192.168.73.200:9876");
 		// 订阅topic的消息
-		MessageSelector bySql = MessageSelector.bySql("age > 10");
-		defaultMQPushConsumer.subscribe("topic01", bySql);
+//		MessageSelector bySql = MessageSelector.bySql("age > 10");
+		defaultMQPushConsumer.subscribe("topic01", "*");
 		// 这个监听器会并发的，开启多个线程进行消费
 //		defaultMQPushConsumer.registerMessageListener(new MessageListenerConcurrently() {
 //
@@ -44,7 +44,8 @@ public class QueueConsumer {
 
 			@Override
 			public ConsumeOrderlyStatus consumeMessage(List<MessageExt> msgs, ConsumeOrderlyContext context) {
-				return null;
+				System.out.println(msgs);
+				return ConsumeOrderlyStatus.SUCCESS;
 			}
 		});
 		defaultMQPushConsumer.start();
