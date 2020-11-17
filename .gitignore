@@ -8,6 +8,17 @@ gradlew.bat
 /build
 bin/
 classes/
+/target/
+*.class
+*.jar
+*.log
+/logs/*
+/target/*
+.gitignore
+.classpath
+.settings*
+.project
+/.idea/*
 
 ### MAC ###
 .DS_Store
