@@ -8,14 +8,13 @@ gradlew.bat
 /build
 bin/
 classes/
-/target/
+/target/*
 *.class
 *.jar
 *.log
 /logs/*
-/target/*
 .gitignore
-.classpath
+/.classpath
 .settings*
 .project
 /.idea/*
