@@ -8,15 +8,6 @@ gradlew.bat
 /build
 bin/
 classes/
-/target/*
-*.class
-*.log
-/logs/*
-.gitignore
-/.classpath
-.settings*
-.project
-/.idea/*
 
 ### MAC ###
 .DS_Store
@@ -29,6 +20,8 @@ classes/
 .settings
 .springBeans
 .sts4-cache
+*.jar
+.jar
 
 ### IntelliJ IDEA ###
 .idea
