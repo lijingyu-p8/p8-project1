@@ -1,8 +1,14 @@
-eureka:
+server: 
+  port: 7902
+eureka: 
+  instance:
+    #eureka名称
+    appname: eureka02
   client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: http://localhost:7902/eureka/,http://localhost:7901/eureka/
-server:
-  port: 8002
+    #设置服务注册中心的URL
+    service-url:                      
+      defaultZone: http://eureka01:7901/eureka/
+spring:
+  application:
+    #应用名称
+    name: eureka02
