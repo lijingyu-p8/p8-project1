@@ -3,7 +3,7 @@ server:
 eureka: 
   instance:
     #eureka名称
-    appname: eureka02
+    hostname: eureka02
   client:
     #设置服务注册中心的URL
     service-url:                      
@@ -11,4 +11,4 @@ eureka:
 spring:
   application:
     #应用名称
-    name: eureka02
+    name: EurekaServer

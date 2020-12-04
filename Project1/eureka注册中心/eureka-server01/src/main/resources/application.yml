@@ -2,13 +2,13 @@ server:
   port: 7901
 eureka: 
   instance:
-    #eureka名称
-    appname: eureka01
+    #eureka名称 主机名
+    hostname: eureka01
   client:
     #设置服务注册中心的URL
     service-url:                      
       defaultZone: http://eureka02:7902/eureka/
 spring:
   application:
-    #应用名称
-    name: eureka01
+    #应用名称 集群环境下，多个节点的名称需要保持一致
+    name: EurekaServer
