@@ -1,0 +1,12 @@
+server: 
+  port: 8001
+eureka: 
+  client:
+    #设置服务注册中心的URL
+    service-url:                      
+      defaultZone: http://eureka01:7901/eureka/
+  instance:
+    hostname: eureka02
+spring:
+  application:
+    name: provider
