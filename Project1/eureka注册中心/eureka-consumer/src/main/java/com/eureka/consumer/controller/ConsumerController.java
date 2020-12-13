@@ -23,7 +23,8 @@ public class ConsumerController {
 	EurekaClient eurekaClient;
 	@Autowired
 	LoadBalancerClient loadBalancerClient;
-
+	@Autowired
+	RestTemplate restTemplate;
 	@GetMapping("loadData01")
 	public String loadData() {
 		List<String> services = discoveryClient.getServices();
@@ -64,5 +65,12 @@ public class ConsumerController {
 		RestTemplate restTemplate = new RestTemplate();
 		String string = restTemplate.getForObject(uri + "/getData", String.class);
 		return string;
+	}
+	
+	@GetMapping("loadData04")
+	public String loadData04() {
+		String url ="http://provider/getData";
+		String respStr = restTemplate.getForObject(url, String.class);
+		return respStr;
 	}
 }

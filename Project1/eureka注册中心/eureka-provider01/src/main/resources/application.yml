@@ -1,12 +1,28 @@
 server: 
-  port: 8001
-eureka: 
+  port: 80
+management:
+  endpoints:
+    web:
+      exposure:
+        #开启暴露的站点
+        include:
+        - '*'
+  endpoint:
+    shutdown:
+      #可以远程关闭服务(只支持post)
+      enabled: true
+eureka:
   client:
     #设置服务注册中心的URL
     service-url:                      
-      defaultZone: http://eureka01:7901/eureka/
+      defaultZone: http://lijingyu:lijingyu@eureka01:7901/eureka/
+    #健康检查
+    healthcheck:
+      enabled: true
   instance:
     hostname: eureka02
+    metadata-map:
+      myname : ljy
 spring:
   application:
     name: provider

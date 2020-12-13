@@ -1,6 +1,9 @@
 server: 
   port: 7901
 eureka: 
+  server:
+    #关闭自我保护机制
+    enable-self-preservation: false
   instance:
     #eureka名称 主机名
     hostname: eureka01
@@ -10,8 +13,11 @@ eureka:
       defaultZone: http://eureka01:7901/eureka/
     fetch-registry: false
     register-with-eureka: false
-      
 spring:
   application:
     #应用名称 集群环境下，多个节点的名称需要保持一致
     name: EurekaServer
+  security:
+    user:
+      name: lijingyu
+      password: lijingyu
