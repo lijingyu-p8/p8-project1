@@ -11,12 +11,12 @@ import org.apache.rocketmq.common.message.MessageExt;
 public class Consumer {
 	public static void main(String[] args) throws Exception {
 		// 设置消费组
-		DefaultMQPushConsumer defaultMQPushConsumer = new DefaultMQPushConsumer("consumerGroup01");
-		defaultMQPushConsumer.setNamesrvAddr("192.168.73.200:9876");
+		DefaultMQPushConsumer defaultMQPushConsumer = new DefaultMQPushConsumer("L_producerGroup02");
+		defaultMQPushConsumer.setNamesrvAddr("10.2.20.39:9877");
 		// 设置消息过滤器，*为不过啦
 		String messageSelector = "*";
 		// 订阅topic的消息
-		defaultMQPushConsumer.subscribe("topic01", messageSelector);
+		defaultMQPushConsumer.subscribe("L_topic02", messageSelector);
 		defaultMQPushConsumer.registerMessageListener(new MessageListenerConcurrently() {
 
 			@Override
