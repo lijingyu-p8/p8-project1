@@ -7,7 +7,7 @@ eureka:
   client:
     #设置服务注册中心的URL
     service-url:                      
-      defaultZone: http://eureka01:7901/eureka/
+      defaultZone: http://lijingyu:lijingyu@eureka01:7901/eureka/
 spring:
   application:
     #应用名称

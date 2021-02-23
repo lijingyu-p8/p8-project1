@@ -1,5 +1,5 @@
 server: 
-  port: 80
+  port: 8001
 management:
   endpoints:
     web:
@@ -15,14 +15,14 @@ eureka:
   client:
     #设置服务注册中心的URL
     service-url:                      
-      defaultZone: http://lijingyu:lijingyu@eureka01:7901/eureka/
+      defaultZone: http://lijingyu:lijingyu@eureka01:7901/eureka/,http://eureka02:7902/eureka/
     #健康检查
     healthcheck:
       enabled: true
   instance:
-    hostname: eureka02
+    hostname: provider01
     metadata-map:
       myname : ljy
 spring:
   application:
-    name: provider
+    name: EurekaProvider
