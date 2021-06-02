@@ -6,13 +6,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.api.user.domain.User;
 
-@RequestMapping("/user")
 public interface UserApi {
 	/**
 	 * 根据id获取用户信息
 	 * @param id
 	 * @return
 	 */
-	@GetMapping("getUserById")
+	@GetMapping("/user/getUserById")
 	public User getUserById(@RequestParam String id);
 }
