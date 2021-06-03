@@ -24,7 +24,7 @@ public class UserController implements UserApi{
 		int incrementAndGet = num.incrementAndGet();
 		System.out.println(incrementAndGet + "--" + user.getId());
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(50);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
