@@ -1,0 +1,5 @@
+spring:
+  cloud:
+    nacos:
+      server-addr: 192.168.73.1:8848  application:    name: consumer-nacos
+server:  port: 4001
