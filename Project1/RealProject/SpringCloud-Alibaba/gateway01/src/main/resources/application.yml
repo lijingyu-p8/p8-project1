@@ -1,0 +1,9 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: path1
+        predicates:        - Path=/mangodb/**
+        - Method=POST,GET
+        uri: lb://consumer-nacos
+        filters:        - StripPrefix=1          
