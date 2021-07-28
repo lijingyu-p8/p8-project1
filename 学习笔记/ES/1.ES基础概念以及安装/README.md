@@ -4,7 +4,7 @@
 
 ### 1.1倒排索引
 
-![img](D:\ProjectDev\P8-Project1\学习笔记\ES\1.ES基础概念以及安装\images\clipboard.png)
+![img](\images\clipboard.png)
 
 关系型数据库的正向索引，根据id可以定位到具体的某一条数据。
 
