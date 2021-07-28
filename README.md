@@ -1,13 +1,16 @@
-# p8-project1
-迈向P8的第一个项目
-知识点
-1.jvm
-2.集合相关知识
-3.多线程高并发
-4.sql 调优
-5.spring cloud相关
-6.redis
-7.zookeeper
-8.mq
+备战：
+1.ES
+2.kafka
+3.rocketMq
+4.MySQL
+5.Redis
+6.zookeeper
+7.jvm
+8.多线程
 9.设计模式
-10.分布式锁、分布式事务
+10.spring源码
+11.springCloud
+12.Nginx
+13.算法
+14.分布式事务、分布式锁
+15.IO
