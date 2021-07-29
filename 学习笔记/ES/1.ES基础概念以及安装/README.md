@@ -69,12 +69,46 @@ elasticsearch相当于关系型数据库MySQL，是一个存储数据、提供�
 为了将数据添加到Elasticsearch，我们需要索引(index)——一个存储关联数据的地方。实际上，索引只是一个用来指向一个或多个分片(shards)的“逻辑命名空间(logical namespace)”.
 
 - 一个分片(shard)是一个最小级别“工作单元(worker unit)”,它只是保存了索引中所有数据的一部分。
+
 - 我们需要知道是分片就是一个Lucene实例，并且它本身就是一个完整的搜索引擎。应用程序不会和它直接通信。
+
 - 分片可以是主分片(primary shard)或者是复制分片(replica shard)。
+
 - 索引中的每个文档属于一个单独的主分片，所以主分片的数量决定了索引最多能存储多少数据。
+
 - 复制分片只是主分片的一个副本，它可以防止硬件故障导致的数据丢失，同时可以提供读请求，比如搜索或者从别的shard取回文档。
-- 当索引创建完成的时候，主分片的数量就固定了，但是复制分片的数量可以随时调整。
+
+- 当索引创建完成的时候，主分片的数量(number_of_shards)就固定了，但是复制分片(number_of_replicas)的数量可以随时调整。
+
 - 副本分片可以提供硬件故障时的容灾以及防止数据丢失，所以主分片和副本分片是不能在同一个es 实例node中的。
+
+- 副本分片可以提供容灾、提高查询性能。但是副本分片不能提供写入功能。
+
+  ![shard](images/shard.png)
 
 ## 二、安装和配置
 
+### 2.1windows安装
+
+### 2.2Linux安装
+
+### 2.3head插件安装
+
+```
+git clone git://github.com/mobz/elasticsearch-head.git
+cd elasticsearch-head
+npm install
+npm run start
+open http://localhost:9100/
+```
+
+如果无法发现ES节点，尝试在ES配置文件中设置允许跨域
+
+```
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+```
+
+安装成功效果图：
+
+![head](images/head.png)
