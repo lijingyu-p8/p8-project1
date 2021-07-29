@@ -102,3 +102,110 @@ public class Singleton01 {
 
 ## 二、策略模式
 
+思想：定义了一组算法，将每个算法都封装起来，并且使它们之间可以互换。
+
+实现思路：某一种流程，比如开发票，A税率是10，B税率是12，C税率是13，整体流程一致，但是其中的具体开发票的行为，有一些差异，为了减少if else，也为了增加扩展性、清晰性，将开发票计算税率定义为一个接口。每个实现类实现自己的策略。总结起来就是将整体流程中某一个会变动的行为，抽象出来，定义接口实现。不同情况使用不同策略。
+
+缺点：策略比较多的话，策略类也比较多，并且流程中需要清晰知道都有哪些策略。
+
+代码：
+
+1. 接口类，对行为进行抽象
+
+   ```
+   //将飞行定义为接口
+   public interface Fly {
+   	public void fly();
+   }
+   ```
+
+2. 策略类
+
+   ```
+   /**
+    * 慢慢的飞
+    */
+   class SlowFly implements Fly {
+   	@Override
+   	public void fly() {
+   		System.out.println("慢点");
+   	}
+   }
+   
+   /**
+    * 快速的飞
+    */
+   class FastFly implements Fly {
+   	@Override
+   	public void fly() {
+   		System.out.println("快点");
+   	}
+   }
+   ```
+
+3. 使用
+
+   ```
+   class Bird {
+   	public static void main(String[] args) {
+   		// 我是鸟，我累了，我想慢点飞
+   		Bird bird = new Bird();
+   		bird.fly(new SlowFly());
+   		System.out.println("终于快到达目的地了");
+   		// 快到了，加速，快点飞
+   		bird.fly(new FastFly());
+   		System.out.println("抵达目的地");
+   	}
+   }
+   ```
+
+## 三、工厂模式
+
+### 1.简单工厂（静态工厂）
+
+- 思路：将创建类的过程交给工厂类，通过不同的参数，返回不同的实例化的子类，将创建类的过程与主要方法体进行解耦。
+
+- 优势：简单。
+
+- 缺点：结构单一，只能针对一种产品进行创建，并且违反了开闭原则。比如造车，新增加一个车类型，工厂类就要新增case一个条件，频繁的改动很麻烦。
+
+- 代码：
+
+  ```
+  //1.汽车接口
+  public abstract class Car {
+  	public abstract String getName();
+  }
+  
+  //具体的车型
+  class BmX1Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X1";
+  	}
+  }
+  
+  class BmX2Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X2";
+  	}
+  }
+  ```
+
+  ```
+  //2.根据不同的条件，创建不同型号的车
+  class CarFactory {
+  	public static Car getCar(String name) {
+  		if ("X1".equals(name)) {
+  			return new BmX1Car();
+  		} else if ("X2".equals(name)) {
+  			return new BmX2Car();
+  		} else {
+  			return null;
+  		}
+  	}
+  }
+  ```
+
+  
