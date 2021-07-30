@@ -208,4 +208,154 @@ public class Singleton01 {
   }
   ```
 
+
+### 2.工厂方法模式
+
+- 思路：定义抽象工厂以及抽象产品。根据业务，实现具体的工厂以及具体的产品类，由具体的工厂生产具体的产品。
+
+- 优势：对产品族友好。易于扩展产品。
+
+- 缺点：类的数量会非常多，并且根据不同条件创建不同的工厂，提供不同的产品，这段逻辑还是很复杂，并且紧耦合
+
+- 代码：
+
+  ```
+  //1.汽车接口
+  abstract class Car {
+  	public abstract String getName();
+  }
   
+  //具体的车型
+  class BmX1Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X1";
+  	}
+  }
+  
+  class BmX2Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X2";
+  	}
+  }
+  
+  //2.定义工厂的超类
+  interface AbstractCarFactory {
+  	public Car getCar();
+  }
+  
+  //2.根据不同的条件，创建不同型号的车
+  class BmX1CarFactory implements AbstractCarFactory {
+  	@Override
+  	public Car getCar() {
+  		return new BmX1Car();
+  	}
+  }
+  
+  //2.根据不同的条件，创建不同型号的车
+  class BmX2CarFactory implements AbstractCarFactory {
+  	@Override
+  	public Car getCar() {
+  		return new BmX2Car();
+  	}
+  }
+  ```
+
+### 3.抽象工厂模式
+
+- 思路：和工厂模式类似，只不过在工厂超类中可以定义多个产品的实现接口。抽象工厂主要是对产品族起作用的。
+
+- 优势：对产品族有较好扩展，比如针对汽车工厂，可以同时生产汽车、汽车的空调、汽车的座椅。适合抽象成一个工厂。比如游戏一键换肤，浏览器一键换肤，使用抽象工厂模式很有作用。规范建议->名词类使用抽象类，动词形容词类使用接口
+
+- 备注：参考博客https://blog.csdn.net/hguisu/article/details/7505909
+
+- 代码：
+
+  ```
+  //1.汽车接口
+  abstract class Car {
+  	public abstract String getName();
+  }
+  
+  //具体的车型
+  class BmX1Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X1";
+  	}
+  }
+  
+  class BmX2Car extends Car {
+  	@Override
+  	public String getName() {
+  		return "我是宝马X2";
+  	}
+  }
+  
+  //2.座椅超类
+  abstract class Chair {
+  	public abstract String getName();
+  }
+  
+  class LeatherwearChair extends Chair {
+  	@Override
+  	public String getName() {
+  		return "我是皮革座椅";
+  	}
+  }
+  
+  class WoodChair extends Chair {
+  	@Override
+  	public String getName() {
+  		return "我是木头座椅";
+  	}
+  }
+  
+  // 3.定义工厂的超类
+  interface AbstractCarFactory {
+  	// 生产汽车
+  	public Car getCar();
+  
+  	// 生产汽车座椅
+  	public Chair getChair();
+  }
+  
+  // 根据不同的条件，创建不同型号的车
+  class BmX1CarFactory implements AbstractCarFactory {
+  	@Override
+  	public Car getCar() {
+  		return new BmX1Car();
+  	}
+  
+  	@Override
+  	public Chair getChair() {
+  		return null;
+  	}
+  }
+  
+  // 根据不同的条件，创建不同型号的车
+  class BmX2CarFactory implements AbstractCarFactory {
+  	@Override
+  	public Car getCar() {
+  		return new BmX2Car();
+  	}
+  
+  	@Override
+  	public Chair getChair() {
+  		return null;
+  	}
+  }
+  ```
+
+## 四、外观模式（Facade）
+
+- 核心思想：各个子系统的调用很复杂，内部实现也很丰富，使用外观模式，定义高度集中的接口，统一管理各个子系统，将子系统内部复杂的逻辑进行封装，降低复杂性，提高可维护性。和Java思想中的封装比较类似
+- 图例：
+- 使用外观模式之前
+
+![外观1](images/外观1.png)
+
+- 使用外观模式之后
+
+![外观2](images/外观2.png)
