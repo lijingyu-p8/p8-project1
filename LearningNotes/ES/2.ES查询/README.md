@@ -1,14 +1,10 @@
-# **Elasticsearch**
+# Elasticsearch
 
-## 一、核心概念
+## term
 
-### 1.1倒排索引
+## terms
 
-### 1.2优势
+## match
 
-### 1.3关键词
-
-### 1.4shard分片
-
-## 二、安装和配置
+## match_all
 
