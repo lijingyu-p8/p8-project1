@@ -967,6 +967,91 @@ public class Singleton01 {
 
 ## 十三、适配器模式
 
+- 核心思想：适配器模式（Adapter Pattern）是指将一个类的接口转换成用户期待的另一个接口，使原本接口不兼容的类可以一起工作，属于构造设计模式。
+- 适配器适用于以下几种业务场景：
+  1. 已经存在的类的方法和需求不匹配（方法结果相同或相似）的情况。
+  2. 适配器模式不是软件初始阶段应该考虑的设计模式，是随着软件的开发，由于不同产品、不同厂家造成功能类似而接口不同的问题的解决方案，有点亡羊补牢的感觉。
+
+- 优点：
+  1. 更好的复用性
+  2. 系统需要使用现有的类，而此类的接口不符合系统的需要。那么通过适配器模式就可以让这些功能得到更好的复用。
+  3. 透明、简单
+  4. 客户端可以调用同一接口，因而对客户端来说是透明的。这样做更简单 & 更直接更好的扩展性
+  5. 在实现适配器功能的时候，可以调用自己开发的功能，从而自然地扩展系统的功能。
+  6. 解耦性。将目标类和适配者类解耦，通过引入一个适配器类重用现有的适配者类，而无需修改原有代码。
+  7. 符合开放-关闭原则，同一个适配器可以把适配者类和它的子类都适配到目标接口；可以为不同的目标接口实现不同的适配器，而不需要修改待适配类
+
+- 缺点：
+
+  过多的使用适配器，会让系统非常零乱，不易整体进行把握
+
+- 类图：
+
+  ![适配器](images/适配器.png)
+
+- 代码：
+
+  ```
+  //步骤1： 创建Target接口（期待得到的插头）：能输出110V（将220V转换成110V）
+  interface Target {
+  	// 将220V转换输出110V（原有插头（Adaptee）没有的）
+  	public void Convert_110v();
+  }
+  
+  // 步骤2： 创建源类（原有的插头） ；
+  class PowerPort220V {
+  	// 原有插头只能输出220V
+  	public void Output_220v() {
+  	}
+  }
+  
+  // 步骤3：创建适配器类（Adapter）
+  class Adapter220V extends PowerPort220V implements Target {
+  	// 期待的插头要求调用Convert_110v()，但原有插头没有
+  	// 因此适配器补充上这个方法名
+  	// 但实际上Convert_110v()只是调用原有插头的Output_220v()方法的内容
+  	// 所以适配器只是将Output_220v()作了一层封装，封装成Target可以调用的Convert_110v()而已
+  	@Override
+  	public void Convert_110v() {
+  		this.Output_220v();
+  	}
+  }
+  
+  // 步骤4：定义具体使用目标类，并通过Adapter类调用所需要的方法从而实现目标（不需要通过原有插头）
+  // 进口机器类
+  class ImportedMachine {
+  
+  	Target target;
+  
+  	public Target getTarget() {
+  		return target;
+  	}
+  
+  	public void setTarget(Target target) {
+  		this.target = target;
+  	}
+  
+  	public void Work() {
+  		target.Convert_110v();
+  		System.out.println("进口机器正常运行");
+  	}
+  }
+  
+  // 通过Adapter类从而调用所需要的方法
+  class AdapterPattern {
+  	public static void main(String[] args) {
+  		Target mAdapter220V = new Adapter220V();
+  		// 用户拿着进口机器插上适配器（调用Convert_110v()方法）
+  		// 再将适配器插上原有插头（Convert_110v()方法内部调用Output_220v()方法输出220V）
+  		// 适配器只是个外壳，对外提供110V，但本质还是220V进行供电
+  		mAdapter220V.Convert_110v();
+  		ImportedMachine mImportedMachine = new ImportedMachine();
+  		mImportedMachine.setTarget(mAdapter220V);
+  		mImportedMachine.Work();
+  	}
+  }
+  ```
+
 ## 十四、Bridge桥接模式
 
 - 核心思想：用聚合代替继承，分离抽象和具体。两边同时发展，通过中间桥进行连接。（聚合方式）比如礼物，有书，有花，有温柔的书，温柔的花。就分两个分支，一个是书、花具体的事物，一个是温柔的、冷酷的，抽象的分支。并行发展，最终通过聚合，实现温柔（书） 温柔（花），冷酷（书），冷酷（花）
