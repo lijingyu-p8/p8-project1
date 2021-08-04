@@ -90,6 +90,14 @@ elasticsearch相当于关系型数据库MySQL，是一个存储数据、提供�
 
 ### 2.1windows安装
 
+```
+bin目录下
+/bin elasticsearch.bat
+启动成功验证：http://localhost:9200/
+```
+
+![image-20210805063859710](images/windows.png)
+
 ### 2.2Linux安装
 
 ### 2.3head插件安装
