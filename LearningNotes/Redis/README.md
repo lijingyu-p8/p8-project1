@@ -46,3 +46,51 @@ source /etc/profile
 ## 三、epoll
 
 ![epoll](images/epoll.png)
+
+## 四、五大数据类型
+
+### 4.1、String
+
+String类型是二进制安全的。意味着Redis的string可以包含任何数据。比如jpg图片或者序列化的对象。一个Redis中字符串value最多可以是512M。
+
+set   <key><value>添加键值对
+
+*NX：当数据库中key不存在时，可以将key-value添加数据库
+*XX：当数据库中key存在时，可以将key-value添加数据库，与NX参数互斥
+*EX：key的超时秒数
+*PX：key的超时毫秒数，与EX互斥
+
+get   <key>查询对应键值
+append  <key><value>将给定的<value> 追加到原值的末尾
+strlen  <key>获得值的长度
+setnx  <key><value>只有在 key 不存在时    设置 key 的值
+
+incr  <key>
+将 key 中储存的数字值增1
+只能对数字值操作，如果为空，新增值为1
+decr  <key>
+将 key 中储存的数字值减1
+只能对数字值操作，如果为空，新增值为-1
+incrby / decrby  <key><步长>将 key 中储存的数字值增减。自定义步长。
+
+### 4.2、list
+
+### 4.3、set
+
+### 4.4、hash
+
+### 4.5、zset
+
+### 4.6、key操作
+
+- keys * ：查看当前库所有key
+- exists key ：判断某个key是否存在
+- type key ：查看key是什么类型
+- del key ：删除指定的key数据
+- unlink key ：根据key选择非阻塞删除，仅将key从keyspace元数据中删除，真正的删除会在后续异步操作。
+- expire key 10 ：10秒钟，为给定的key设置过期时间
+- ttl key ：查看还有多少秒过期，-1表示永不过期，-2表示已过期
+- select ：切换数据库，select 1 切换到1号库
+- dbsize：查看当前数据库的key的数量
+- flushdb：清空当前库
+- flushall：通杀全部库
