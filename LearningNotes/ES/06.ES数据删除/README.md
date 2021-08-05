@@ -1,14 +1,27 @@
 # **Elasticsearch**
 
-## 一、核心概念
+## 数据删除
 
-### 1.1倒排索引
+### 一、单条删除
 
-### 1.2优势
+使用DELETE，对指定id进行删除
 
-### 1.3关键词
+```
+DELETE product/_doc/8888
+```
 
-### 1.4shard分片
+### 二、条件删除
 
-## 二、安装和配置
+构建query条件，使用_delete_by_query进行条件删除
+
+```
+POST product/_delete_by_query
+{
+  "query": {
+    "match": {
+      "price": 2999
+    }
+  }
+}
+```
 
