@@ -19,7 +19,85 @@ PUT product(索引name)
 }
 ```
 
+- setting
 
+- mapping
+
+  ```
+  index
+    是否对当前字段创建索引，默认true，如果不创建索引，该字段不会通过索引被搜索到,但是仍然会在source元数据中展示
+  analyzer
+    指定分析器（standard、english）。
+  boost
+    对当前字段相关度的评分权重，默认1
+  coerce
+    是否允许强制类型转换，true “1”=> 1   false “1”=< 1
+  copy_to
+    "copy_to": "other_field_name"
+  doc_values
+    为了提升排序和聚合效率，默认true，如果确定不需要对字段进行排序或聚合，也不需要通过脚本访问字段值，则可以禁
+    用doc值以节省磁盘空间（不支持text和annotated_text）。
+  eager_global_ordinals
+    用于聚合的字段上，优化聚合性能,
+    Frozen indices（冻结索引）：有些索引使用率很高，会被保存在内存中，有些使用率特别低，宁愿在使用的时候重新创建，
+    在使用完毕后丢弃数据，Frozen indices的数据命中频率小，不适用于高搜索负载，数据不会被保存在内存中，堆空间占用
+    比普通索引少得多，Frozen indices是只读的，请求可能是秒级或者分钟级。
+    eager_global_ordinals不适用于Frozen indices
+  enable
+    是否创建倒排索引，可以对字段操作，也可以对索引操作，如果不创建索引，仍然可以检索并在_source元数据中展示，
+    谨慎使用，该状态无法修改。type为object时可以使用
+  fielddata
+    查询时内存数据结构，在首次用当前字段聚合、排序或者在脚本中使用时，需要字段为fielddata数据结构，并且创建
+    正排索引保存到堆中。
+  fields
+    给field创建多字段，用于不同目的（全文检索或者聚合分析排序）.
+  format
+    格式化
+    "date": {
+        "type":   "date",
+        "format": "yyyy-MM-dd"
+     }
+  ignore_above
+    超过长度将被忽略
+  search_analyzer
+    设置单独的查询时分析器
+  ignore_malforme
+    忽略类型错误
+  index_options
+    控制将哪些信息添加到反向索引中以进行搜索和突出显示。仅用于text字段
+  Index_phrases
+    提升exact_value查询速度，但是要消耗更多磁盘空间
+  Index_prefixes
+    前缀搜索
+  min_chars
+    前缀最小长度，>0，默认2（包含）
+  max_chars
+    前缀最大长度，<20，默认5（包含）
+  "index_prefixes": {
+            "min_chars" : 1,
+            "max_chars" : 10
+          }
+  meta
+    附加元数据
+  normalizer
+  norms
+    是否禁用评分（在filter和聚合字段上应该禁用）。
+  null_value
+    为null值设置默认值
+    "null_value": "NULL"
+  position_increment_gap
+  proterties
+    除了mapping还可用于object的属性设置
+  similarity
+    为字段设置相关度算法，支持BM25、claassic（TF-IDF）、boolean
+  store
+    设置字段是否仅查询,数据会设置在fields标签下，和source平级，但是会存储两份
+  term_vector 
+  ```
+
+  
+
+- aliases
 
 cat命令：
 
@@ -83,5 +161,4 @@ cat命令：
 ```
 DELETE product(索引name)
 ```
-
 
