@@ -51,9 +51,15 @@ source /etc/profile
 
 ### 4.1、String
 
-String类型是二进制安全的。意味着Redis的string可以包含任何数据。比如jpg图片或者序列化的对象。一个Redis中字符串value最多可以是512M。
+1. String类型是二进制安全的。意味着Redis的string可以包含任何数据。比如jpg图片或者序列化的对象。一个Redis中字符串value最多可以是512M。
 
-![image-20210806123356892](images/string-1.png)
+2. 数据结构：简单动态字符串，内部结构类似java中的ArrayList。会进行动态的扩缩容。采用预分配冗余空间的方式来减少内存的频繁分配。内部为字符串分配的空间大小实际上会比字符串的length大一些。当字符串大小小于1M时，发生扩容时，会翻倍扩容。当大于1M时，扩容会以每次增加1M空间的规则来进行扩容。
+
+   ![](images/string-2.png)
+
+3. 常用命令
+
+   ![](images/string-1.png)
 
 - set key value ：添加键值对
 
@@ -90,21 +96,37 @@ String类型是二进制安全的。意味着Redis的string可以包含任何数
 
 - setrange  key offset value：用 value覆写key所储存的字符串值，从offset位置开始(索引从0开始)，进行值的替换。当替换的字符数量超过1时，会对原值从offset开始，批量进行替换，即使超过原值的总长度也可以。
 
-- setex  <key><过期时间\*******\*><value>\****
+- setex  key seconds value：设置键值的同时，设置过期时间，单位秒。
 
-  设置键值的同时，设置过期时间，单位秒。
+- getset key value：以新换旧，设置了新值同时获得旧值。
 
-  getset <key><value>
+### 4.2、List
 
-  以新换旧，设置了新值同时获得旧值。
+1. 简单的字符串列表，类似java中的ArrayList，按照插入顺序排序，并且可以添加一个元素到列表的头或者尾部，也可以从头、尾部移除元素。
 
-### 4.2、list
+2. 内部实现是一个双向链表。
 
-### 4.3、set
+   ![image-20210806170041253](images/list-1.png)
 
-### 4.4、hash
+3. 数据结构：
 
-### 4.5、zset
+4. 常用命令：
+
+- lpush/rpush key value1 value2 value3....： 从左边/右边插入一个或多个值。
+- lpop/rpop key：从左边/右边弹出一个值，并remove。
+- rpoplpush  key1 key2：从key1列表右边弹出一个值，插到key2列表左边。
+- lrange key start stop：按照索引下标获得元素(从左到右)，索引下标从0开始，结尾是-1。因为是双向链表，所以正向是从0开始，反向是从-1开始。lrange key1 0 -1，0左边第一个，-1右边第一个，（0，-1表示获取所有）
+- lindex key index：按照索引下标获得元素(从左到右)
+- llen key：获得列表长度 。
+- linsert key BEFORE|AFTER pivot value：在从左边数，第一个pivot（字符匹配项）的左侧插入插入值value，当找不到目标匹配项时，插入失败。
+- lrem key count value：从左边删除count个value(从左到右)。
+- lset key index value：将列表key下标为index的值替换成value。
+
+### 4.3、Set
+
+### 4.4、Hash
+
+### 4.5、Zset
 
 ### 4.6、key操作
 
