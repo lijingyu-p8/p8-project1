@@ -295,3 +295,135 @@ GET product/_doc/8888
   ```
 
 ## 聚合查询
+
+- 聚合允许使用者对 es 文档进行统计分析，类似关系型数据库中的 group by，也有很多其他的聚合，例如取最大值、平均值等等。
+
+- 聚合使用aggs关键字，使用"size": 0，可以不返回原始数据
+
+  ```json
+  GET product/_search
+  {
+    "aggs": {
+      "MAX_XIAOMI": {
+        "max": {//获取最大值
+          "field": "price"
+        }
+      },
+      "AGV_XIAOMI":{
+        "avg": {//获取平均值
+          "field": "price"
+        }
+      },
+      "distinct_age":{
+        "cardinality": {//去重之后取总数
+          "field": "price"
+        }
+      },
+      "stats":{
+        "stats": {//一次返回count， max， min， avg 和 sum 五个指标
+          "field": "price"
+        }
+      },
+      "price_groupby":{
+        "terms": {//桶聚合，相当于group by分组统计
+          "field": "price",
+          "size": 10
+        },
+        "aggs": {//桶聚合嵌套聚合查询
+          "price_sum": {
+            "sum": {
+              "field": "price"
+            }
+          }
+        }
+      }
+    },
+    "size": 0
+  }
+  ```
+
+  ```json
+  {
+    "took" : 3,
+    "timed_out" : false,
+    "_shards" : {
+      "total" : 1,
+      "successful" : 1,
+      "skipped" : 0,
+      "failed" : 0
+    },
+    "hits" : {
+      "total" : {
+        "value" : 6,
+        "relation" : "eq"
+      },
+      "max_score" : null,
+      "hits" : [ ]
+    },
+    "aggregations" : {
+      "stats" : {
+        "count" : 6,
+        "min" : 399.0,
+        "max" : 4999.0,
+        "avg" : 2132.3333333333335,
+        "sum" : 12794.0
+      },
+      "distinct_age" : {
+        "value" : 5
+      },
+      "AGV_XIAOMI" : {
+        "value" : 2132.3333333333335
+      },
+      "MAX_XIAOMI" : {
+        "value" : 4999.0
+      },
+      "price_groupby" : {
+        "doc_count_error_upper_bound" : 0,
+        "sum_other_doc_count" : 0,
+        "buckets" : [
+          {
+            "key" : 1199,
+            "doc_count" : 2,
+            "price_sum" : {
+              "value" : 2398.0
+            }
+          },
+          {
+            "key" : 399,
+            "doc_count" : 1,
+            "price_sum" : {
+              "value" : 399.0
+            }
+          },
+          {
+            "key" : 999,
+            "doc_count" : 1,
+            "price_sum" : {
+              "value" : 999.0
+            }
+          },
+          {
+            "key" : 3999,
+            "doc_count" : 1,
+            "price_sum" : {
+              "value" : 3999.0
+            }
+          },
+          {
+            "key" : 4999,
+            "doc_count" : 1,
+            "price_sum" : {
+              "value" : 4999.0
+            }
+          }
+        ]
+      }
+    }
+  }
+  ```
+
+  
+
+- d
+
+- d
