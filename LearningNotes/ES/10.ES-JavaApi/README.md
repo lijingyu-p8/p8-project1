@@ -1,14 +1,27 @@
 # **Elasticsearch**
 
-## 一、核心概念
+## 一、JAVA-API
 
-### 1.1倒排索引
+```java
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
 
-### 1.2优势
+public class ESTest_Client {
+    public static void main(String[] args) throws Exception {
 
-### 1.3关键词
+        // 创建ES客户端
+        RestHighLevelClient esClient = new RestHighLevelClient(
+                RestClient.builder(new HttpHost("localhost", 9200, "http"))
+        );
 
-### 1.4shard分片
+        // 关闭ES客户端
+        esClient.close();
+    }
+}
+```
+
+
 
 ## 二、安装和配置
 
