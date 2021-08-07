@@ -2,13 +2,13 @@
 
 ## Query DSL
 
-### 1.指定id查询
+### 1、指定id查询
 
 ```
 GET product/_doc/8888
 ```
 
-### 2.match_all
+### 2、match_all
 
 - 查询所有
 
@@ -26,7 +26,7 @@ GET product/_doc/8888
 
   ![image-20210807114649608](images/match_all.png)
 
-### 3.match
+### 3、match
 
 - 条件匹配，关键词会被分词
 
@@ -74,12 +74,224 @@ GET product/_doc/8888
 
 - 
 
-### 4.term
+### 4、term
 
-关键词不会被分词
+- 关键词不会被分词，当作一个完整的短语进行匹配
 
-### 5.terms
+  ```json
+  GET product/_search
+  {
+    "query": {
+      "term": {
+        "name": {
+          "value": "xiaomi phone"
+        }
+      }
+    }
+  }
+  ```
 
-### 6.prefix
+  会使用完整的“xiaomi phone”进行数据匹配。所以有可能导致会搜索不到匹配的记录。
+
+- 
+
+### 5、terms
+
+- 和term查询效果相同，但是可以指定多个值。只要其中任何一个满足条件，文档即匹配。
+
+  ```json
+  GET product/_search
+  {
+    "query": {
+      "terms": {
+        "name": [
+          "phone",
+          "nfc"
+        ]
+      }
+    }
+  }
+  ```
+
+- 
+
+### 6、_source
+
+- 指定查询字段。默认情况下，es查询结果会把_source包含的所有字段都返回。可以通过"__source"指定返回的字段。
+
+- includes：来指定想要显示的字段
+
+- excludes：来指定不想要显示的字段
+
+  ```
+  GET product/_search
+  {
+    "query": {
+      "match": {
+        "name": "xiaomi phone"
+      }
+    },
+    "_source": ["name","price"], 
+    "_source": {
+      "excludes": ["desc","price"],
+      "includes": ["desc","price"]
+    }
+  }
+  ```
+
+- 
+
+### 6、prefix
+
+### 7、sort排序
+
+- 排序，desc、asc
+
+  ```json
+  GET product/_search
+  {
+    "query": {
+      "match_all": {}
+    },
+    "sort": [
+      {
+        "price": {
+          "order": "desc"
+        },
+        "_score": {
+          "order": "asc"
+        }
+      }
+    ]
+  }
+  ```
+
+## 组合查询
+
+- bool把各种其它查询通过must（必须 ）、 must_not（必须不）、 should（应该）的方式进行组合。
+
+  ```json
+  GET product/_search
+  {
+    "query": {
+      "bool": {
+        "must": [
+          {}
+        ],
+        "must_not": [
+          {}
+        ],
+        "should": [
+          {}
+        ],
+        "filter": [
+          {}
+        ],
+        "minimum_should_match": 1,
+        "boost": 1
+      }
+    }
+  }
+  ```
+
+- must
+
+  必须包含，返回的文档必须满足must子句的条件，并且参与计算分值。
+
+- must_not
+
+  必须不包含，返回的文档必须不满足must_not定义的条件。不计算相关度分数。
+
+- should
+
+  可能包含，返回的文档可能满足should子句的条件。在一个Bool查询中，如果没有must或者filter，有一个或者多个should子句，那么只要满足一个就可以返回。
+
+- filter
+
+  过滤，返回的文档必须满足filter子句的条件。但是不会像Must一样，参与计算分值。结果是会被缓存的。
+
+- minimum_should_match
+
+  minimum_should_match参数定义了至少满足几个子句。类似于sql中的in()，计算相关度分数。
+
+- boost
+
+  搜索权重
+
+- filter缓存问题
+
+  ![img](images/filter-1.png)
+
+  1. filter只有当执行到一定次数的时候，才会对热数据进行缓存，缓存的时候会使用二进制数组的形式进行缓存，每条doc会对应0、1，1代表匹配，0代表不匹配。
+  2. filer中保存的是匹配结果，所以搜索的时候，可以直接得到结果。
+  3. 执行query的时候，filter一般会在query之前进行执行，过滤结果，也可以提高query查询速度。
+  4. filter不会计算相关度分数。效率也会比query高。
+  5. 当元数据（原始数据）更新的时候，cache也会更新。
+
+## 范围查询
+
+- 查询找出那些落在指定区间内的数字或者时间。 range 查询允许以下字符
+
+  ![](images/range-1.png)
+
+  ```
+  GET product/_search
+  {
+    "query": {
+      "range": {
+        "price": {
+          "gte": 3000,
+          "lte": 4000
+        }
+      }
+    }
+  }
+  ```
+
+## 分页查询
+
+- from：当前页的起始索引，默认从 0 开始。 from = (pageNum - 1) * size
+
+- size：每页显示多少条
+
+  ```
+  GET product/_search
+  {
+    "query": {
+      "match_all": {}
+    },
+    "from": 3,
+    "size": 2
+  }
+  ```
+
+## 模糊查询
+
+- 返回包含与搜索字词相似的字词的文档。编辑距离是将一个术语转换为另一个术语所需的一个字符更改的次数。
+
+- 这些更改可以包括：
+
+  1、更改字符（box → fox）
+  2、删除字符（black → lack）
+  3、插入字符（sic → sick）
+  4、转置两个相邻字符（act → cat）
+
+- 为了找到相似的术语， fuzzy 查询会在指定的编辑距离内创建一组搜索词的所有可能的变体或扩展。然后查询返回每个扩展的完全匹配。
+
+- 通过 fuzziness 修改编辑距离。一般使用默认值 AUTO，根据术语的长度生成编辑距离。
+
+  ```json
+  GET product/_search
+  {
+    "query": {
+      "fuzzy": {
+        "name": {
+          "value": "phronee",
+          "fuzziness": 2
+        }
+      }
+    }
+  }
+  ```
 
 ## 聚合查询
