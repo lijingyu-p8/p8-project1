@@ -4,7 +4,7 @@
 
 7.0之后，索引的默认分片数为1，7.0之前默认为5。
 
-```json
+```
 PUT product(索引name)
 {
   "settings": {
@@ -94,112 +94,192 @@ PUT product(索引name)
 
      用于多个json数组。
 
-- 
+- properties属性配置
 
-```
-index
-  是否对当前字段创建索引，默认true，如果不创建索引，该字段不会通过索引被搜索到,但是仍然会在source元数据中展示
-analyzer
-  指定分析器（standard、english）。
-boost
-  对当前字段相关度的评分权重，默认1
-coerce
-  是否允许强制类型转换，true “1”=> 1   false “1”=< 1
-copy_to
-  "copy_to": "other_field_name"
-doc_values
-  为了提升排序和聚合效率，默认true，如果确定不需要对字段进行排序或聚合，也不需要通过脚本访问字段值，则可以禁
-  用doc值以节省磁盘空间（不支持text和annotated_text）。
-eager_global_ordinals
-  用于聚合的字段上，优化聚合性能,
-  Frozen indices（冻结索引）：有些索引使用率很高，会被保存在内存中，有些使用率特别低，宁愿在使用的时候重新创建，
-  在使用完毕后丢弃数据，Frozen indices的数据命中频率小，不适用于高搜索负载，数据不会被保存在内存中，堆空间占用
-  比普通索引少得多，Frozen indices是只读的，请求可能是秒级或者分钟级。
-  eager_global_ordinals不适用于Frozen indices
-enable
-  是否创建倒排索引，可以对字段操作，也可以对索引操作，如果不创建索引，仍然可以检索并在_source元数据中展示，
-  谨慎使用，该状态无法修改。type为object时可以使用
-fielddata
-  查询时内存数据结构，在首次用当前字段聚合、排序或者在脚本中使用时，需要字段为fielddata数据结构，并且创建
-  正排索引保存到堆中。
-fields
-  给field创建多字段，用于不同目的（全文检索或者聚合分析排序）.
-format
-  格式化
-  "date": {
-      "type":   "date",
-      "format": "yyyy-MM-dd"
-   }
-ignore_above
-  超过长度将被忽略
-search_analyzer
-  设置单独的查询时分析器
-ignore_malforme
-  忽略类型错误
-index_options
-  控制将哪些信息添加到反向索引中以进行搜索和突出显示。仅用于text字段
-Index_phrases
-  提升exact_value查询速度，但是要消耗更多磁盘空间
-Index_prefixes
-  前缀搜索
-min_chars
-  前缀最小长度，>0，默认2（包含）
-max_chars
-  前缀最大长度，<20，默认5（包含）
-"index_prefixes": {
-          "min_chars" : 1,
-          "max_chars" : 10
-        }
-meta
-  附加元数据
-normalizer
-norms
-  是否禁用评分（在filter和聚合字段上应该禁用）。
-null_value
-  为null值设置默认值
-  "null_value": "NULL"
-position_increment_gap
-proterties
-  除了mapping还可用于object的属性设置
-similarity
-  为字段设置相关度算法，支持BM25、claassic（TF-IDF）、boolean
-store
-  设置字段是否仅查询,数据会设置在fields标签下，和source平级，但是会存储两份
-term_vector 
-```
+  1. index
 
+     是否对当前字段创建索引，默认true，如果不创建索引，该字段不会通过索引被搜索到,但是仍然会在source元数据中展示。
 
+  2. analyzer
 
-- aliases
+     指定分词器，比如standard、english、ik_max_word等。默认为standard。
+
+  3. boost
+
+     对当前字段相关度的评分权重，默认1，权重越高，在多字段多条件搜索时，相关度所占权重比例就会越高。
+
+  4. coerce
+
+     是否允许强制类型转换，true “1”=> 1   false “1”=< 1，默认为true。
+
+  5. copy_to
+
+     该字段是把其他字段中的值，以空格为分隔符组成一个大字符串，然后被分析和索引但是不存储，也就是说它能被查询，但是不能被取回显示。注意copy_to指向的字段，字段类型要为text。如果想要查询显示，可以设置store=true。
+
+     ```json
+     PUT my-index-000001
+     {
+       "mappings": {
+         "properties": {
+           "first_name": {
+             "type": "text",
+             "copy_to": "full_name" 
+           },
+           "last_name": {
+             "type": "text",
+             "copy_to": "full_name" 
+           },
+           "full_name": {
+             "type": "text"
+           }
+         }
+       }
+     }
+     
+     PUT my-index-000001/_doc/1
+     {
+       "first_name": "John",
+       "last_name": "Smith"
+     }
+     
+     GET my-index-000001/_search
+     {
+       "query": {
+         "match": {
+           "full_name": { 
+             "query": "John Smith",
+             "operator": "and"
+           }
+         }
+       }
+     }
+     ```
+
+  6. doc_values
+
+     为了提升排序和聚合效率，默认true，为字段创建正排索引。如果确定不需要对字段进行排序或聚合，也不需要从脚本访问字段值，则可以禁用doc值以节省磁盘空间（不支持text和annotated_text）。
+
+  7. enable
+
+     是否创建倒排索引，可以对字段操作，也可以对索引操作，如果不创建索引，仍然可以检索并在_source元数据中展示，谨慎使用，该状态无法修改。type为object时可以使用。
+
+  8. fielddata
+
+     查询时内存数据结构，在首次用当前字段聚合、排序或者在脚本中使用时，需要字段为fielddata数据结构，并且创建正排索引保存到堆中。
+
+  9. format
+
+     格式化"format": "yyyy-MM-dd"
+
+  10. eager_global_ordinals
+
+      用于聚合的字段上，优化聚合性能,
+
+  11. Frozen indices（冻结索引）
+
+      有些索引使用率很高，会被保存在内存中，有些使用率特别低，宁愿在使用的时候重新创建，在使用完毕后丢弃数据，Frozen indices的数据命中频率小，不适用于高搜索负载，数据不会被保存在内存中，堆空间占用比普通索引少得多，Frozen indices是只读的，请求可能是秒级或者分钟级。eager_global_ordinals不适用于Frozen indices。
+
+  12. fields
+
+      给field创建多字段，用于不同目的（全文检索或者聚合分析排序）。
+
+  13. ignore_above
+
+      超过长度将被忽略
+
+  14. search_analyzer
+
+      设置单独的查询时分析器
+
+  15. ignore_malforme
+
+      忽略类型错误
+
+  16. index_options
+
+      控制将哪些信息添加到反向索引中以进行搜索和突出显示。仅用于text字段
+
+  17. Index_phrases
+
+      提升exact_value查询速度，但是要消耗更多磁盘空间
+
+  18. Index_prefixes
+
+      前缀搜索
+
+  19. min_chars
+
+      前缀最小长度，>0，默认2（包含）
+
+  20. max_chars
+
+      前缀最大长度，<20，默认5（包含）
+
+      ```json
+      "index_prefixes": {
+      	"min_chars": 1,
+      	"max_chars": 10
+      }
+      ```
+
+  21. norms
+
+      是否禁用评分（在filter和聚合字段上应该禁用）。
+
+  22. null_value
+
+      为null值设置默认值，"null_value": "NULL"
+
+  23. store
+
+      设置字段是否仅查询,数据会设置在fields标签下，和source平级，但是会存储两份 
+
+### 1.3、aliases
+
+### 1.4、dynamic
+
+- properties同级别，用于设置是否可以动态添加字段。
+
+- true 新检测到的字段将添加到映射中。（默认）
+
+- false 新检测到的字段将被忽略。这些字段将不会被索引，因此将无法搜索，但仍会出现在_source返回的匹配项中。这些字段不会添加到映射中，必须显式添加新字段。
+
+- strict 如果检测到新字段，则会引发异常并拒绝文档。必须将新字段显式添加到映射中。
+
+  ```json
+  {
+  	"mappings": {
+  		"properties": {
+  			"field_1": {
+  				"type": "text",
+  				"analyzer": "standard",
+  				"boost": 2
+  			}
+  		},
+  		"dynamic": true
+  	}
+  }
+  ```
+
+### 1.5、doc_values和fielddata
+
+- doc_values和fielddata均是为创建正排索引服务的。
+
+- 倒排索引：查询某个关键词在哪些文档中存在。
+
+- 正排索引：查询某个文档中包含哪些项。
+
+- doc_values的优势是他不会随着文档的增多引起OOM问题。doc_values在磁盘创建排序和聚合所需的正排索引。这样就避免了在生产环境给ES设置一个很大的HEAP_SIZE，也使得JVM的GC更加高效，这个又为其它的操作带来了间接的好处。而且，随着ES版本的升级，对于doc_values的优化越来越好，索引的速度已经很接近fielddata了，而且硬盘的访问速度也是越来越快（比如SSD）。所以doc_values 现在可以满足大部分场景，也是ES官方重点维护的对象。
+
+- fileddata是在使用时创建、基于内存的正排索引。
+
+  | 维度     | doc_values     | fielddata      |
+  | -------- | -------------- | -------------- |
+  | 创建时间 | index时创建    | 使用时动态创建 |
+  | 创建位置 | 磁盘           | 内存(jvm heap) |
+  | 优点     | 不占用内存空间 | 不占用磁盘空间 |
 
 cat命令：
-
-```
-/_cat/allocation      	#查看单节点的shard分配整体情况
-/_cat/shards          #查看各shard的详细情况
-/_cat/shards/{index}  	#查看指定分片的详细情况
-/_cat/master          #查看master节点信息
-/_cat/nodes           #查看所有节点信息
-/_cat/indices         #查看集群中所有index的详细信息
-/_cat/indices/{index} 	#查看集群中指定index的详细信息
-/_cat/segments        #查看各index的segment详细信息,包括segment名, 所属shard, 内存(磁盘)占用大小, 是否刷盘
-/_cat/segments/{index}#查看指定index的segment详细信息
-/_cat/count           #查看当前集群的doc数量
-/_cat/count/{index}   #查看指定索引的doc数量
-/_cat/recovery        #查看集群内每个shard的recovery过程.调整replica。
-/_cat/recovery/{index}#查看指定索引shard的recovery过程
-/_cat/health          #查看集群当前状态：红、黄、绿
-/_cat/pending_tasks   #查看当前集群的pending task
-/_cat/aliases         #查看集群中所有alias信息,路由配置等
-/_cat/aliases/{alias} #查看指定索引的alias信息
-/_cat/thread_pool     #查看集群各节点内部不同类型的threadpool的统计信息,
-/_cat/plugins         #查看集群各个节点上的plugin信息
-/_cat/fielddata       #查看当前集群各个节点的fielddata内存使用情况
-/_cat/fielddata/{fields}     #查看指定field的内存使用情况,里面传field属性对应的值
-/_cat/nodeattrs              #查看单节点的自定义属性
-/_cat/repositories           #输出集群中注册快照存储库
-/_cat/templates              #输出当前正在存在的模板信息
-```
 
 
 
@@ -233,5 +313,34 @@ cat命令：
 
 ```
 DELETE product(索引name)
+```
+
+## 五、cat命令
+
+```
+/_cat/allocation      	#查看单节点的shard分配整体情况
+/_cat/shards          #查看各shard的详细情况
+/_cat/shards/{index}  	#查看指定分片的详细情况
+/_cat/master          #查看master节点信息
+/_cat/nodes           #查看所有节点信息
+/_cat/indices         #查看集群中所有index的详细信息
+/_cat/indices/{index} 	#查看集群中指定index的详细信息
+/_cat/segments        #查看各index的segment详细信息,包括segment名, 所属shard, 内存(磁盘)占用大小, 是否刷盘
+/_cat/segments/{index}#查看指定index的segment详细信息
+/_cat/count           #查看当前集群的doc数量
+/_cat/count/{index}   #查看指定索引的doc数量
+/_cat/recovery        #查看集群内每个shard的recovery过程.调整replica。
+/_cat/recovery/{index}#查看指定索引shard的recovery过程
+/_cat/health          #查看集群当前状态：红、黄、绿
+/_cat/pending_tasks   #查看当前集群的pending task
+/_cat/aliases         #查看集群中所有alias信息,路由配置等
+/_cat/aliases/{alias} #查看指定索引的alias信息
+/_cat/thread_pool     #查看集群各节点内部不同类型的threadpool的统计信息,
+/_cat/plugins         #查看集群各个节点上的plugin信息
+/_cat/fielddata       #查看当前集群各个节点的fielddata内存使用情况
+/_cat/fielddata/{fields}     #查看指定field的内存使用情况,里面传field属性对应的值
+/_cat/nodeattrs              #查看单节点的自定义属性
+/_cat/repositories           #输出集群中注册快照存储库
+/_cat/templates              #输出当前正在存在的模板信息
 ```
 
