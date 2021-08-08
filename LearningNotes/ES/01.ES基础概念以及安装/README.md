@@ -2,7 +2,7 @@
 
 ## 一、核心概念
 
-### 1.1倒排索引
+### 1.1、倒排索引
 
 ![img](images/clipboard.png)
 
@@ -20,7 +20,7 @@
 - 每个doc的长度：越长相关度越低。
 - 包含这个关键词的所有doc的平均长度。
 
-### 1.2优势
+### 1.2、优势
 
 - 面向开发者友好，屏蔽了Lucene的复杂特性，集群自动发现（cluster discovery）
 - 自动维护数据在多个节点上的建立
@@ -30,7 +30,7 @@
 - 对于大公司，可以构建几百台服务器的大型分布式集群，处理PB级别数据；对于小公司，开箱即用，门槛低上手简单。
 - 相比较传统数据库，提供了全文检索，同义词处理（美丽的cls>漂亮的cls），相关度排名。聚合分析以及海量数据的近实时（NTR）处理，这些传统数据库完全做不到。
 
-### 1.3核心关键词
+### 1.3、核心关键词
 
 ![image-20210729161235554](images/元数据.png)
 
@@ -88,7 +88,7 @@ elasticsearch相当于关系型数据库MySQL，是一个存储数据、提供�
 
 ## 二、安装和配置
 
-### 2.1windows安装
+### 2.1、windows安装
 
 ```
 bin目录下
@@ -98,9 +98,9 @@ bin目录下
 
 ![image-20210805063859710](images/windows.png)
 
-### 2.2Linux安装
+### 2.2、Linux安装
 
-### 2.3head插件安装
+### 2.3、head插件安装
 
 ```
 git clone git://github.com/mobz/elasticsearch-head.git
@@ -120,3 +120,44 @@ http.cors.allow-origin: "*"
 安装成功效果图：
 
 ![head](images/head.png)
+
+### 2.4、常用配置
+
+- 
+
+  ```yaml
+  cluster.name: 
+  	配置elasticsearch的集群名称，默认是elasticsearch。建议修改成一个有意义的名称。
+  node.name:
+  	节点名，通常一台物理服务器就是一个节点，es会默认随机指定一个名字，建议指定一个有意义的名称，方便管理
+  	一个或多个节点组成一个cluster集群，集群是一个逻辑的概念，节点是物理概念，后边章节会详细介绍。
+  path.conf: 
+  	设置配置文件的存储路径，tar或zip包安装默认在es根目录下的config文件夹，rpm安装默认在/etc/ elasticsearch
+  path.data:
+  	设置索引数据的存储路径，默认是es根目录下的data文件夹，可以设置多个存储路径，用逗号隔开。
+  path.logs:
+  	设置日志文件的存储路径，默认是es根目录下的logs文件夹
+  path.plugins: 
+  	设置插件的存放路径，默认是es根目录下的plugins文件夹
+  bootstrap.memory_lock: true
+  	设置为true可以锁住ES使用的内存，避免内存与swap分区交换数据。
+  network.host: 
+  	设置绑定主机的ip地址，设置为0.0.0.0表示绑定任何ip，允许外网访问，生产环境建议设置为具体的ip。
+  http.port: 9200
+  	设置对外服务的http端口，默认为9200。
+  transport.tcp.port: 9300  集群结点之间通信端口
+  node.master: 
+  	指定该节点是否有资格被选举成为master结点，默认是true，如果原来的master宕机会重新选举新的master。
+  node.data: 
+  	指定该节点是否存储索引数据，默认为true。
+  discovery.zen.ping.unicast.hosts: ["host1:port", "host2:port", "..."]
+  	设置集群中master节点的初始列表。
+  discovery.zen.ping.timeout: 3s
+  	设置ES自动发现节点连接超时的时间，默认为3秒，如果网络延迟高可设置大些。
+  discovery.zen.minimum_master_nodes:
+  	主结点数量的最少值 ,此值的公式为：(master_eligible_nodes / 2) + 1 ，比如：有3个符合要求的主结点，那么这里要设置为2。
+  node.max_local_storage_nodes: 
+  	单机允许的最大存储结点数，通常单机启动一个结点建议设置为1，开发环境如果单机启动多个节点可设置大于1。
+  ```
+
+  

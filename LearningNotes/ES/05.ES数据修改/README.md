@@ -44,3 +44,53 @@
   
 
 - 批量数据修改
+
+### 三、update内部原理
+
+- 无论时覆盖更新还是增量修改指定字段，内部都是对旧文档做delete标记，生成新文档，更新version版本号，并在后续由ES集群对标记为delete的历史数据进行清理操作。
+
+  ![09-局部替换内部原理](images/update内部原理.jpg)
+
+### 四、painless脚本script
+
+- Painless脚本语言，类似Java语法，是ES支持的默认的脚本语言，其他的还支持expression、mustache、java，但是支持的不是很好，有限制。
+
+- ES首次执行脚本的时候，会对脚本进行编译并缓存。所以脚本中使用到的数据最好定义成变量，放到params中。这样不会影响到编译缓存，否则每次修改，ES都会重新编译。
+
+- ctx._source默认语法，代表获取元数据。支持params定义参数。
+
+  ```json
+  POST product/_update/1
+  {
+    "script": {
+      "lang": "painless",
+      "source": "ctx._source.price += params.num",
+      "params": {
+        "num": 2
+      }
+    }
+  }
+  ```
+
+- 查询时使用painless，source指定具体字段，使用doc['filedName'].value
+
+  ```json
+  GET product/_search
+  {
+    "script_fields": {
+      "price_query": {
+        "script": {
+          "lang": "painless",
+          "source": "doc['price'].value+params.num",
+          "params": {
+            "num": 2
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  
+
+- ddd

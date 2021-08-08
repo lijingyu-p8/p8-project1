@@ -344,6 +344,30 @@ GET product/_doc/8888
 
   ![image-20210807223439731](images/aggs-1.png)
 
-- d
+- 
 
-- d
+
+## 脚本script
+
+- 查询时使用painless，source指定具体字段，使用doc['filedName'].value
+
+  ```
+  GET product/_search
+  {
+    "script_fields": {
+      "price_query": {
+        "script": {
+          "lang": "painless",
+          "source": "doc['price'].value+params.num",
+          "params": {
+            "num": 2
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  
+
+- 
