@@ -347,6 +347,54 @@ GET product/_doc/8888
 - 
 
 
+## 批量查询
+
+- mget实现批量查询，可以一次查询同一索引下的数据，也可以查询不同索引下的数据。get路径中如果包含了index，则body中可以省略。
+
+- 如果查询超时了，会返回超时前查询到的所有数据。
+
+  ```json
+  GET /_mget
+  GET /<index>/_mget
+  body参数说明
+  {
+      "_id":必填
+      "ids":["id1","id2"]也可以使用这种形式查询
+      "_index":索引，如果path中指定了，此处可以省略
+      "_source"：指定结果中的字段，默认返回所有["field1","field2"]
+      "_source": {
+          "include": [ "user" ],
+          "exclude": [ "user.location" ]
+        }
+      "_stored_fields":查询store设置为true的字段["field1","field2"]
+  }
+  ```
+
+  ```json
+  GET product2/_mget
+  {
+    "ids": ["1","2"]
+  }
+  GET /_mget
+  {
+    "docs": [
+      {
+        "_index": "product2",
+        "_id": "1",
+        "_source":["name"]
+        //查询除了name外所有的数据
+        "_source":{
+          "exclude":["name"]
+        }
+        //查询store为true的数据
+        "stored_fields": [ "field3", "field4" ]
+      }
+    ]
+  }
+  ```
+
+- 
+
 ## 脚本script
 
 - 查询时使用painless，source指定具体字段，使用doc['filedName'].value
