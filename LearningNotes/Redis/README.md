@@ -132,7 +132,53 @@ source /etc/profile
 
 ### 4.3、Set
 
+1. Redis Set对外提供的功能与list类似，是一个列表的功能，特殊之处在于set是可以自动去重的，当需要存储一个列表数据，又不希望出现重复数据时，set是一个很好的选择，并且set提供了判断某个成员是否在一个set集合内的重要接口，这个也是list所不能提供的。
+
+2. Redis的Set是string类型的无序集合。它底层其实是一个value为null的hash表，所以添加，删除，查找的复杂度都是O(1)。
+
+3. 数据结构：
+
+   Set数据结构是dict字典，字典是用哈希表实现的。
+   Java中HashSet的内部实现使用的是HashMap，只不过所有的value都指向同一个对象。Redis的set结构也是一样，它的内部也使用hash结构，所有的value都指向同一个内部值。
+
+4. 常用命令：
+
+- sadd key value1 value2..... ：将一个或多个 member 元素加入到集合 key 中，已经存在的 member 元素将被忽略。
+- smembers key：取出该集合的所有值。
+- sismember key value：判断集合key是否为含有该value值，有1，没有0。
+- scard key：返回该集合的元素个数。
+- srem key value1 value2....： 删除集合中的某个元素。
+- spop key count：随机从该集合中弹出count个值，并remove。
+- srandmember key n：随机从该集合中取出n个值。不会从集合中删除 。
+- smove source destination value：把集合中一个值从一个集合移动到另一个集合。
+- sinter key1 key2：返回两个集合的交集元素。
+- sunion key1 key2：返回两个集合的并集元素。
+- sdiff key1 key2：返回两个集合的差集元素(key1中的，不包含key2中的)。
+
 ### 4.4、Hash
+
+1. Redis hash 是一个键值对集合。内部存储string类型的field和value的映射表，hash特别适合用于存储对象。类似Java里面的Map<String,Object>。
+
+2. 用户ID为查找的key，存储的value用户对象包含姓名，年龄，生日等信息，如果用普通的key/value结构来存储，主要有以下2种存储方式：
+
+   ![image-20210809124008487](images/hash_1.png)
+
+   ![image-20210809124301343](images/hash_2.png)
+
+3. 数据结构：
+
+   Hash类型对应的数据结构是两种：ziplist（压缩列表），hashtable（哈希表）。当field-value长度较短且个数较少时，使用ziplist，否则使用hashtable。
+
+4. 常用命令：
+
+- hset key field value：给key集合中的 field键赋值value。
+- hget key1 field：从key1集合field取出 value。
+- hmset key1 field1 value1 field2 value2...：批量设置hash的值。
+- hexists key1 field：查看哈希表 key 中，给定域 field 是否存在。 
+- hkeys key：列出该hash集合的所有field。
+- hvals key：列出该hash集合的所有value。
+- hincrby key field increment：为哈希表 key 中的域 field 的值加上增量 1  -1。
+- hsetnx key field value：将哈希表 key 中的域 field 的值设置为 value ，当且仅当域 field 不存在才能设置成功。
 
 ### 4.5、Zset
 
