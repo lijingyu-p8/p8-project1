@@ -461,4 +461,122 @@ GET product/_doc/8888
 
   
 
+
+## 相关性得分原理及排序规则优化
+
+### 1、analyzer和search_analyzer
+
+- analyzer：创建索引时，指定了analyzer分析器。会在插入数据的时候，根据指定的分析器进行分词，创建倒排索引。
+- search_analyzer：在使用关键词进行搜索时，会使用search_analyzer分析器对关键词进行分词。如果没有特殊指定，一般情况下search_analyzer和analyzer是相同的，并且在查询mapping时，只会将两者不同的search_analyzer进行展示。
+- ![image-20210810213509844](images/analyzer-1.png)
+
+### 2、shard local IDF和global IDF（多shard下评分不准确问题解析）
+
+- ES在计算相关性得分score时，会遵循三个条件：TF、IDF、相同条件下数据短的评分高。IDF评分是计算词条在当前分片下整个索引内的相关性，如果词频非常高，那么IDF评分就会比较低。所以如果数据分配不均，就会出现多shard下评分不准确的问题。比如某个分片下1万条数据，另一个分片下只10条数据，那么同一关键词在不同shard下的IDF评分就不同，当发生跨分片查询数据的情况时，就会导致数据不准确。
+- 解决：各个分片大小尽量设置成一样大，并且生产环境极少出现这种问题，因为生产环境数据量大，各个分片配置的比较合理，最终误差会非常小。
+- ![image-20210810214740182](images/IDF-1.png)
+
+### 3、multi_match多字段搜索
+
+- 测试数据
+
+  ```json
+  注意：中文分词需要把吃鸡、手机设置为热词。
+  PUT score
+  {
+    "mappings": {
+      "properties": {
+        "name": {
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_max_word"
+        },
+        "desc":{
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_max_word"
+        }
+      }
+    }
+  }
+  PUT /score/_doc/1
+  {
+    "name": "吃鸡手机，游戏神器，超级",
+    "desc": "基于TX深度定制，流畅游戏不发热，物理外挂，快充",
+    "price": 3999,
+    "createtime": "2020-05-20",
+    "collected_num": 99,
+    "tags": [
+      "性价比",
+      "发烧",
+      "不卡"
+    ]
+  }
+  PUT /score/_doc/2
+  {
+    "name": "小米NFC手机",
+    "desc": "支持全功能NFC,专业吃鸡，快充",
+    "price": 4999,
+    "createtime": "2020-05-20",
+    "collected_num": 299,
+    "tags": [
+      "性价比",
+      "发烧",
+      "公交卡"
+    ]
+  }
+  PUT /score/_doc/3
+  {
+    "name": "NFC手机，超级",
+    "desc": "手机中的轰炸机",
+    "price": 2999,
+    "createtime": "2020-05-20",
+    "collected_num": 1299,
+    "tags": [
+      "性价比",
+      "发烧",
+      "门禁卡"
+    ]
+  }
+  PUT /score/_doc/4
+  {
+    "name": "小米耳机",
+    "desc": "耳机中的黄焖鸡",
+    "price": 999,
+    "createtime": "2020-05-20",
+    "collected_num": 9,
+    "tags": [
+      "低调",
+      "防水",
+      "音质好"
+    ]
+  }
+  PUT /score/_doc/5
+  {
+    "name": "红米耳机",
+    "desc": "耳机中的肯德基",
+    "price": 399,
+    "createtime": "2020-05-20",
+    "collected_num": 0,
+    "tags": [
+      "牛逼",
+      "续航长",
+      "质量好"
+    ]
+  }
+  ```
+
+- best_fields
+
+  默认的搜索策略。
+
+- most_fields
+
+- cross_fields
+
 - 
+
+1. dd
+2. dd
+3. dd
+4. dd
