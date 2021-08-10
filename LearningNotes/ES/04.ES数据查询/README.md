@@ -481,7 +481,7 @@ GET product/_doc/8888
 - 测试数据
 
   ```json
-  注意：中文分词需要把吃鸡、手机设置为热词。
+  注意：中文分词需要把吃鸡、手机、快充、超级设置为热词。
   PUT score
   {
     "mappings": {
@@ -566,17 +566,115 @@ GET product/_doc/8888
   }
   ```
 
+- 相关性分数计算规则
+
+  ```
+  搜索关键词：吃鸡手机
+  GET score/_search
+  {
+    "query": {
+      "bool": {
+        "should": [
+          {"match": {"name": "吃鸡手机"}},
+          {"match": {"desc": "吃鸡手机"}}
+        ]
+      }
+    }
+  }
+  结果分析：
+  期望的匹配结果是doc1>doc2>doc3
+  TF/IDF:
+  TF: 关键词在每个doc中出现的次数
+  IDF: 关键词在整个索引中出现的次数
+  relevance score计算规则：每个query的分数，乘以matched query数量，除以总query数量
+  1.它会执行 should 语句中的两个查询。
+  2.加和两个查询的评分。
+  3.乘以匹配语句的总数。
+  4.除以所有语句总数
+  算一下doc1的分数
+  {"match": {"name": "吃鸡手机"}},
+  	doc1:	吃鸡1次，手机1次，计2分	
+  	doc2:	吃鸡0次，手机1次，计1分
+  	doc3:	吃鸡0次，手机1次，计1分
+  {"match": {"desc": "吃鸡手机"}}
+  	doc1:	吃鸡0次，手机0次，计0分	
+  	doc2:	吃鸡0次，手机1次，计1分
+  	doc3:	吃鸡0次，手机1次，计1分
+  总分：（query1+query2）*matched query / total query
+  	doc1:	query1+query2：2		matched：1	total query：2		result：2*1/2=1
+  	doc2:	query1+query2：2		matched：2	total query：2		result：2*2/2=2
+  	doc3:	query1+query2：2		matched：2	total query：2		result：2*2/2=2
+  matched query数量 = 2
+  总query数量 = 2
+  ```
+
+  ![image-20210810224116296](images/multi-1.png)
+
+  因为相关性评分的计算规则，最应该匹配的doc1，相关性反而最低。结果是错误的。
+
 - best_fields
 
-  默认的搜索策略。
+  默认的搜索策略。对于同一个query，单个field匹配更多的term，则优先排序。当查询多个字段时，如果关键词在某个字段中被匹配的次数比较多，则这个字段是best_ields，最好的字段。其余字段匹配的相关性分数就会被忽略，这个词条的相关性分数就会以best_fields为准。
+
+  使用dis_max，默认的搜索策略是best_fields。因为name这个字段，匹配“吃鸡手机”次数最多，score评分最高，所以是best_fields.
+
+  ![image-20210810224445067](images/multi-2.png)
 
 - most_fields
 
+  如果一次请求中，对于同一个doc，匹配到某个term的field越多，则越优先排序。比如doc1，四个字段匹配到了关键词，doc2是3个字段匹配到了关键词。那么doc1优先展示。因为匹配的field最多。
+
 - cross_fields
 
-- 
+- dix_max
 
-1. dd
-2. dd
-3. dd
-4. dd
+  dix_max查询（Disjunction Max Query）：将任何与任一查询匹配的文档作为结果返回，但只将最佳匹配的评分作为查询的评分结果返回。比如查询时name、desc两个字段，name的评分结果比desc高，则以name的评分为准进行返回，desc字段的评分将被忽略。
+
+  dix_max默认的best_fields策略，会带来一个问题，当搜索词在fields字段中全部存在时，只会以其中一个字段的评分为准，当doc1只匹配一个字段，但是评分高，doc2匹配的2个字段，正常情况下，匹配2个字段的应该优先展示，但是因为best_fields策略，导致其余字段不参与评分，最终结果不准确。所以可以使用tie_breaker设置其余字段的参与度，官方建议0.1-0.4之间。太大的话，有可能导致喧宾夺主。
+
+  ```json
+  GET score/_search
+  {
+    "query": {
+      "dis_max": {
+        "queries": [
+          {
+            "match": {
+              "name": "超级快充"
+            }
+          },
+          {
+            "match": {
+              "desc": "超级快充"
+            }
+          }
+        ],
+        "tie_breaker": 0.3
+      }
+    }
+  }
+  ```
+
+- tie_breaker
+
+  取值范围 [0,1]，其中 0 代表使用 dis_max 最佳匹配语句的普通逻辑，1表示所有匹配语句同等重要。最佳的精确值需要根据数据与查询调试得出，但是合理值应该与零接近（处于 0.1 - 0.4 之间），这样就不会颠覆 dis_max 最佳匹配性质的根本。
+
+- multi_match
+
+  ```json
+  GET score/_search
+  {
+    "query": {
+      "multi_match": {
+        "query": "超级快充",
+        "fields": ["name","desc"],
+        "type": "most_fields",
+        "tie_breaker": 0.3
+      }
+    }
+  }
+  ```
+
+  
+
+- 
