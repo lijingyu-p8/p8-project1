@@ -626,6 +626,66 @@ GET product/_doc/8888
 
 - cross_fields
 
+  测试数据：
+
+  ```json
+  POST /teacher/_bulk
+  { "index": { "_id": "1"} }
+  { "name" : {"姓" : "吴", "名" : "磊"} }
+  { "index": { "_id": "2"} }	
+  { "name" : {"姓" : "连", "名" : "鹏鹏"} }
+  { "index": { "_id": "3"} }
+  { "name" : { "姓" : "张","名" : "明明"} }
+  { "index": { "_id": "4"} }
+  { "name" : { "姓" : "周","名" : "志志"} }
+  { "index": { "_id": "5"} }
+  { "name" : {"姓" : "吴", "名" : "亦凡"} }
+  { "index": { "_id": "6"} }
+  { "name" : {"姓" : "吴", "名" : "京"} }
+  { "index": { "_id": "7"} }
+  { "name" : {"姓" : "吴", "名" : "彦祖"} }
+  { "index": { "_id": "8"} }
+  { "name" : {"姓" : "帅", "名" : "吴"} }
+  { "index": { "_id": "9"} }
+  { "name" : {"姓" : "连", "名" : "磊"} }
+  { "index": { "_id": "10"} }
+  { "name" : {"姓" : "周", "名" : "磊"} }
+  { "index": { "_id": "11"} }
+  { "name" : {"姓" : "张", "名" : "磊"} }
+  { "index": { "_id": "12"} }
+  { "name" : {"姓" : "马", "名" : "磊"} }
+  { "name" : {"姓" : "诸葛", "名" : "吴磊"} }
+  ```
+
+  ```json
+  GET teacher/_search
+  {
+    "query": {
+      "multi_match": {
+        "query": "吴磊",
+        "type": "most_fields",
+        "fields": [
+          "name.姓",
+          "name.名"
+        ]
+      }
+    }
+  }
+  ```
+
+  使用默认搜索策略或者most_fields进行搜索时，期望的吴磊不会在第一条。因为相关性评分有问题。在姓中，“吴”比较多，所以IDF会比较低，相反在名中IDF就会比较高。对于名“磊”，在名中IDF分低，姓中分高，所以就会导致问题。
+
+  cross_fields交叉的字段。含义是关键词分词之后，每个关键字，必须在其中至少一个字段中匹配。
+
+  比如“吴磊”，使用cross_fields策略，会产生俩个条件:
+
+  1、姓或者名中,必须有吴
+  2、姓或者名中,必须有磊
+
+  默认是或操作。满足一条就行,存在吴,或者磊即可。可以使用and操作,只有两条都满足,存在完整的吴磊，才可以。
+
+  ![image-20210811205415883](images/cross-1.png)
+
 - dix_max
 
   dix_max查询（Disjunction Max Query）：将任何与任一查询匹配的文档作为结果返回，但只将最佳匹配的评分作为查询的评分结果返回。比如查询时name、desc两个字段，name的评分结果比desc高，则以name的评分为准进行返回，desc字段的评分将被忽略。
@@ -675,6 +735,129 @@ GET product/_doc/8888
   }
   ```
 
-  
 
-- 
+### 4、function score query
+
+- 必须定义一个查询和一个或多个函数，自定义函数会为查询返回的每个文档计算一个新分数。
+
+  ```json
+  {
+  	"query": {
+  		"function_score": {
+  			"query": {},
+  			"functions": [
+  				{}
+  			]
+  		}
+  	}
+  }
+  ```
+
+1. field_value_factor
+
+   ```json
+   {
+   	"query": {
+   		"function_score": {
+   			"query": {
+   				"match_all": {}
+   			},
+   			"functions": [
+   				{
+   					"field_value_factor": {
+   						"field": "collected_num",
+   						"modifier": "ln2p",
+   						"factor": 1.2
+   					},
+   					"weight": 1
+   				}
+   			]
+   		}
+   	}
+   }
+   ```
+
+   将某个字段的值进行计算得出分数。
+
+   - field：要计算的字段，（需要是数值型）
+   - factor：当前分数计算，对整个结果产生的权重比。
+   - modifier：以何种运算方式计算，接受以下枚举。
+     1. none：不处理
+     2. log：计算对数
+     3. log1p：先将字段值 +1，再计算对数
+     4. log2p：先将字段值 +2，再计算对数
+     5. ln：计算自然对数
+     6. ln1p：先将字段值 +1，再计算自然对数
+     7. ln2p：先将字段值 +2，再计算自然对数
+     8. square：计算平方
+     9. sqrt：计算平方根
+     10. reciprocal：计算倒数
+   - weight：当前的分数计算函数，对整个结果产生的权重比。
+
+2. random_score
+
+   随机得到 0 到 1 分数。
+
+   ```json
+   {
+   	"query": {
+   		"function_score": {
+   			"query": {
+   				"match_all": {}
+   			},
+   			"random_score": {}
+   		}
+   	}
+   }
+   ```
+
+3. script_score
+
+   通过自定义脚本计算分值
+
+   ```json
+   {
+   	"query": {
+   		"function_score": {
+   			"query": {
+   				"match_all": {}
+   			},
+   			"script_score": {
+   				"script": {
+   					"source": "Math.log(1 + doc['price'].value)"
+   				}
+   			}
+   		}
+   	}
+   }
+   ```
+
+4. boost_mode
+
+   指定计算后的分数与原始的_score如何合并，有以下选项：
+
+   1. imultiply：查询分数和函数分数相乘
+   2. sum：查询分数和函数分数相加
+   3. avg：取平均值
+   4. replace：替换原始分数
+   5. min：取查询分数和函数分数的最小值
+   6. max：取查询分数和函数分数的最大值
+
+   ```json
+   {
+   	"query": {
+   		"function_score": {
+   			"query": {
+   				"match_all": {}
+   			},
+   			"boost_mode": "multiply"
+   		}
+   	}
+   }
+   ```
+
+5. max_boost
+
+   设置相关性分数的上限，比如"max_boost": 10，则计算的相关性分数最大为10，超过的限制为10，小于10的，仍然是原数据。
+
+6. 
