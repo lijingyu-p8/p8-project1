@@ -100,7 +100,38 @@ source /etc/profile
 
 - getset key value：以新换旧，设置了新值同时获得旧值。
 
-### 4.2、List
+### 4.2、bitmap
+
+1. 一个字节占8位，内存中可以存多个字节，但是也可以用连续的内存空间存储连续的字节。比如010000010000100001  这就算位图bitmap。用于操作具体某一位字节的。
+
+2. setbit k1 1 1  给第一位设置为1  结果就是01000000 最小单位为一个字节。此时strlen 长度，就是1
+
+3. 使用场景示例：
+
+   - 统计最近一段时间某个用户登陆系统的天数，用bitmap  365位代表一年，登陆一次，setbit 当前对应的位置为1 SETBIT sean 7 1
+
+     在最后统计一段区间内1的个数，就是当前用户登陆的天数 bitcount sean 0 -1。
+
+   - 统计一段时间内登陆系统的用户总数，区分僵尸用户和活跃真实用户。
+
+     setbit 20200816 1 1 
+
+     setbit 20200816 5 1 
+
+     setbit 20200817 1 1
+
+     key为日期，value用bitmap记录登陆，bitop or 或操作，统计用户
+
+   ![](images/bitmap-1.png)
+
+4. 常用指令：
+
+- SETBIT key offset value：给key 的某个偏移量的二进制位设置0或者1，下标从0开始。
+- BITPOS key bit [start] [end]： 查找二进制0 或者1  在value对应的二进制字节中，某个区间内第一次出现的位置，比如 BITPOS k5 1 1 5  返回k5对应的value中，1-5字节位区间内，第一个1出现的位置，找不到则返回-1。
+- BITCOUNT key [start end]：二进制位1出现的总次数。
+- BITOP operation destkey key [key ...] ：二进制位操作  and 与 or 或  将key1  key2... 进行按位操作赋值给destkey。
+
+### 4.3、List
 
 1. 简单的字符串列表，类似java中的ArrayList，按照插入顺序排序，并且可以添加一个元素到列表的头或者尾部，也可以从头、尾部移除元素。
 
@@ -130,7 +161,7 @@ source /etc/profile
 - lrem key count value：从左边删除count个value(从左到右)。
 - lset key index value：将列表key下标为index的值替换成value。
 
-### 4.3、Set
+### 4.4、Set
 
 1. Redis Set对外提供的功能与list类似，是一个列表的功能，特殊之处在于set是可以自动去重的，当需要存储一个列表数据，又不希望出现重复数据时，set是一个很好的选择，并且set提供了判断某个成员是否在一个set集合内的重要接口，这个也是list所不能提供的。
 
@@ -155,7 +186,7 @@ source /etc/profile
 - sunion key1 key2：返回两个集合的并集元素。
 - sdiff key1 key2：返回两个集合的差集元素(key1中的，不包含key2中的)。
 
-### 4.4、Hash
+### 4.5、Hash
 
 1. Redis hash 是一个键值对集合。内部存储string类型的field和value的映射表，hash特别适合用于存储对象。类似Java里面的Map<String,Object>。
 
@@ -180,7 +211,7 @@ source /etc/profile
 - hincrby key field increment：为哈希表 key 中的域 field 的值加上增量 1  -1。
 - hsetnx key field value：将哈希表 key 中的域 field 的值设置为 value ，当且仅当域 field 不存在才能设置成功。
 
-### 4.5、Zset
+### 4.6、Zset
 
 1. Redis有序集合zset与普通集合set非常相似，是一个没有重复元素的字符串集合。不同之处是有序集合的每个成员都关联了一个评分（score）,这个评分（score）被用来按照从最低分到最高分的方式排序集合中的成员。集合的成员是唯一的，但是评分可以是重复了 。
 
@@ -224,7 +255,7 @@ source /etc/profile
 - zcount key min max：统计该集合，分数区间内的元素个数。
 - zrank key value：返回该值在集合中的排名，从0开始。
 
-### 4.6、key操作
+### 4.7、key操作
 
 - keys * ：查看当前库所有key
 - exists key ：判断某个key是否存在
@@ -237,6 +268,66 @@ source /etc/profile
 - dbsize：查看当前数据库的key的数量
 - flushdb：清空当前库
 - flushall：通杀全部库
+
+### 4.8、回收策略
+
+1. LRU：回收最少使用的键，也就是未使用时间最长的键
+2. LFU：回收同样时间内，访问次数最少的键
+
+### 4.9、key的有效期
+
+- ![](images/过期key-1.png)
+
+1. 只get操作不会改变过期时间，只有写操作，才会清空过期时间，ttl key  返回的是 -1代表已过期。
+
+2. 设置key的过期时间，超过时间后，将会自动删除该key，但是不会立马删除，会按照一定策略进行删除。key过期之后，将不会再查询到。Redis淘汰过期的key有三种策略。
+
+   - 被动删除：
+
+     当读/写一个已经过期的key时，会触发惰性删除策略，直接删除掉这个过期key。
+
+     但是这样是不够的，因为有些过期的key，永远不会访问他们，所以就不会被清理。但是无论如何，这些key应该过期被清理。所以redis需要主动定期清理过期的key。
+
+   - 主动删除：
+
+     Redis会周期性的随机测试一批设置了过期时间的key并进行处理。测试到的已过期的key将被删除。
+
+     Redis每秒10次做的事情：
+
+     1. 随机测试100个设置了过期时间的key
+     2. 删除所有发现的已过期的key
+     3. 若删除的key超过25个则重复步骤1
+
+     这是一个基于概率的简单算法，基本的假设是抽出的样本能够代表整个key空间，redis持续清理过期的数据直至将要过期的key的百分比降到了25%以下。这也意味着在任何给定的时刻已经过期但仍占据着内存空间的key的量最多为每秒的写操作量除以4。
+
+   - 当前已用内存超过maxmemory限定时，触发主动清理策略
+
+     当 Redis 的内存占用超过我们设置的 maxmemory 时，会把长时间没有使用的key清理掉。按照 LRU算法，我们需要对所有key（也可以设置成只淘汰有过期时间的key）按照空闲时间进行排序，然后淘汰掉空闲时间最大的那部分数据，使得Redis的内存占用降到一个合理的值。
+
+     LRU算法的缺点：
+
+     1. 我们需要维护一个全部（或只有过期时间）key的列表，还要按照最近使用时间排序。这会消耗大量内存
+     2. 每次操作 key 时更新对应维护列表的排序也会占用额外的CPU资源。
+
+     对于Redis这样对性能要求很高的系统来说是不被允许的。因此，Redis采用了一种 近似LRU 的算法。当 Redis 接收到新的写入命令，而内存又不够时，就会触发近似LRU算法来强制清理一些key。
+
+     具体清理的步骤是：
+
+     1. Redis会对 key 进行采样，通常是取5个，然后会把过期的key放到我们上面说的“过期池”中
+     2. 过期池中的 key 是按照空闲时间来排序的，Redis 会优先清理掉空闲时间最长的 key，直到内存小于 maxmemory。
+
+     其中 Redis首先是采样了一部分key，这里采样数量 maxmemory_samples 通常是5，我们也可以自己设置，采样数量越大，结果就越接近LRU算法的结果，带来的影响是：性能随之变差。主从模式下，从库不需要清理，主库清理过期数据时，会在AOF文件中增加del操作。
+
+   - 清理策略
+
+     1. noeviction：不会继续处理写请求（DEL可以继续处理）。
+     2. allkeys-lru：对所有key的近似LRU
+     3. volatile-lru：使用近似LRU算法淘汰设置了过期时间的key
+     4. allkeys-random：从所有key中随机淘汰一些key
+     5. volatile-random：对所有设置了过期时间的key随机淘汰
+     6. volatile-ttl：淘汰有效期最短的一部分key
+     7. volatile-lfu：使用LFU算法淘汰设置了过期时间的key
+     8. allkeys-lfu：从全部key中进行淘汰，使用LFU
 
 ## 五、发布订阅
 
