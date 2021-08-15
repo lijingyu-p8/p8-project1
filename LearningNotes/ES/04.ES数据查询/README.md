@@ -862,3 +862,428 @@ GET product/_doc/8888
 
 ## Nested Search复杂类型查询
 
+### 1、基本概念
+
+- nested类型是object数据类型的专用版本，它允许以可以彼此独立地查询对象的方式对对象数组进行索引，当存储内部对象为复杂类型时应该使用nested而不是object。
+
+- 默认的object类型，会将复杂类型所有数据中相同字段的值创建为同一个索引。
+
+  ```
+  PUT /order/_doc/1
+  {
+  	"order_name": "小米10 Pro订单",
+  	"desc": "shouji zhong de zhandouji",
+  	"goods_count": 3,
+  	"total_price": 12699,
+  	"goods_list": [
+  		{
+  			"name": "小米10 PRO MAX 5G",
+  			"price": 4999
+  		},
+  		{
+  			"name": "钢化膜",
+  			"price": 19
+  		},
+  		{
+  			"name": "手机壳",
+  			"price": 199
+  		}
+  	]
+  }
+  ```
+
+  虽然goods_list存在三条数据，但是在创建索引时，会将所有的name、price统一创建，实际应该按照三条数据进行分解查找，但是最终会汇聚成一条。
+
+  ```json
+  #三条数据变成了一条
+  {
+  	"name": [
+  		"小米10",
+  		"PRO",
+  		"MAX",
+  		"5G",
+  		"钢化膜",
+  		"手机壳"
+  	],
+  	"price": [
+  		4999,
+  		19,
+  		199
+  	]
+  }
+  ```
+
+- 判断数据格式是嵌套类型，创建mapping时，字段类型应该指定为nested。如果不指定，默认会创建为object类型。导致按照条件查询时结果错误。
+
+### 2、查询语法以及mapping
+
+- 查询时要使用nested查询，path为nested嵌套的级别，nested对象的查询深度。query为子查询。
+
+  ```json
+  {
+    "query": {
+      "nested": {
+        "path": "path_to_nested_doc",
+        "query": {}
+      }
+    }
+  }
+  ```
+
+- 创建mapping示例
+
+  ```json
+  {
+  	"mappings": {
+  		"properties": {
+  			"goods_list": {
+  				"type": "nested",
+  				"properties": {
+  					"name": {
+  						"type": "text",
+  						"fields": {
+  							"keyword": {
+  								"type": "keyword",
+  								"ignore_above": 256
+  							}
+  						},
+  						"analyzer": "ik_max_word"
+  					},
+  					"price": {
+  						"type": "long"
+  					}
+  				}
+  			}
+  		}
+  	}
+  }
+  ```
+
+  goods_list为nested查询，所以要查询goods_list数据时，要使用nested，并且path使用goods_list。
+
+  正确的查询结果
+
+  ![image-20210815101508207](images/nested-1.png)
+
+  如果不使用nested类型，查询时将会匹配goods_list所有的数据，并不只是按照每条单独匹配。
+
+### 3、复杂查询示例
+
+- 复杂的嵌套查询示例
+
+  创建mapping
+
+  ```json
+  PUT /area
+  {
+    "mappings": {
+      "properties": {
+        "province": {
+          "type": "nested",
+          "properties": {
+            "name": {
+              "type": "text",
+              "analyzer": "ik_max_word"
+            },
+            "cities": {
+              "type": "nested",
+              "properties": {
+                "name": {
+                  "type": "text",
+                  "analyzer": "ik_max_word"
+                },
+                "district": {
+                  "type": "nested",
+                  "properties": {
+                    "name": {
+                      "type": "text",
+                      "analyzer": "ik_max_word"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  插入数据
+
+  ```json
+  PUT /area/_doc/1
+  {
+    "province": {
+      "name": "北京",
+      "cities": [
+        {
+          "name": "北京市",
+          "district": [
+            {"name":"丰台区"},
+            {"name":"海淀区"},
+            {"name":"朝阳区"},
+            {"name":"东城区"},
+            {"name":"西城区"},
+            {"name":"昌平区"}
+            ]
+        }
+      ]
+    }
+  }
+  PUT /area/_doc/2
+  {
+    "province": {
+      "name": "河南省",
+      "cities": [
+        {
+          "name": "郑州市",
+          "district": [
+            {"name":"金水区"},
+            {"name":"高新区"},
+            {"name":"郑东新区"},
+            {"name":"二七区"},
+            {"name":"中原区"},
+            {"name":"惠济区"}
+            ]
+        },
+         {
+          "name": "鹤壁市",
+          "district": [
+            {"name":"山城区"},
+            {"name":"淇滨区"},
+            {"name":"鹤山区"},
+            {"name":"朝歌"},
+            {"name":"浚县"}
+            ]
+        }
+      ]
+    }
+  }
+  PUT /area/_doc/3
+  {
+    "province": {
+      "name": "台湾省",
+      "cities": [
+        {
+          "name": "台北市",
+          "district": [
+            {"name":"中正区"},
+            {"name":"大同区"},
+            {"name":"中山区"},
+            {"name":"万华区"},
+            {"name":"信义区"},
+            {"name":"松山区"}
+            ]
+        },
+         {
+          "name": "高雄",
+          "district": [
+            {"name":"小港区"},
+            {"name":"鼓山区"},
+            {"name":"三民区"}
+            ]
+        }
+      ]
+    }
+  }
+  ```
+
+  查询示例
+
+  ```json
+  #city为包含北京市 或者 包含淇滨区的省份信息
+  GET area/_search
+  {
+    "query": {
+      "nested": {
+        "path": "province",
+        "query": {
+          "nested": {
+            "path": "province.cities",
+            "query": {
+              "bool": {
+                "should": [
+                  {
+                    "term": {
+                      "province.cities.name": "北京"
+                    }
+                  },
+                  {
+                    "nested": {
+                      "path": "province.cities.district",
+                      "query": {
+                        "term": {
+                          "province.cities.district.name": "淇滨区"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+### 4、score_mode
+
+- score_mode：聚合分数计算方式
+
+  ```json
+  {
+    "query": {
+      "nested": {
+        "path": "path_to_nested_doc",
+        "query": {},
+        "score_mode": "avg"
+      }
+    }
+  }
+  ```
+
+  1.	avg （默认）：使用所有匹配的子对象的平均相关性得分。
+  2.	max：使用所有匹配的子对象中的最高相关性得分。
+  3.	min：使用所有匹配的子对象中最低的相关性得分。
+  4.	none：不要使用匹配的子对象的相关性分数。该查询为父文档分配得分为0。
+  5.	sum：将所有匹配的子对象的相关性得分相加。
+
+## Join查询
+
+### 基本概念
+
+- 在同一索引的文档中创建父/子关系
+
+### 创建mapping
+
+- 创建了一个字段，名称为my_join_field，type为join。指定上下级关系，上级为depart，下级为employee
+
+  ```json
+  PUT join_test
+  {
+    "mappings": {
+      "properties": {
+        "my_join_field": {
+          "type": "join",
+          "relations": {
+            "depart": "employee"
+          }
+        }
+      }
+    }
+  }
+  ```
+
+### 创建数据
+
+- 创建父级的时候，join字段内要指明当前数据的join name。用于限定当前数据是否为父级。
+
+- 创建子级数据的时候，除了要指定join name，还要指定routing=1(父级id)，要保证子级和父级在同一分片内。并且还要指定parent的id是哪个。
+
+  ```json
+  PUT join_test/_doc/1
+  {
+    "name": "行政部",
+    "my_join_field": {
+      "name": "depart"
+    }
+  }
+  PUT join_test/_doc/2
+  {
+    "name": "财务部",
+    "my_join_field": {
+      "name": "depart"
+    }
+  }
+  PUT join_test/_doc/3
+  {
+    "name": "研发部",
+    "my_join_field": {
+      "name": "depart"
+    }
+  }
+  
+  POST join_test/_doc?routing=1?refresh
+  {
+    "name": "张一",
+    "my_join_field": {
+      "name": "employee",
+      "parent": "1"
+    }
+  }
+  POST join_test/_doc?routing=1?refresh
+  {
+    "name": "张二",
+    "my_join_field": {
+      "name": "employee",
+      "parent": "2"
+    }
+  }
+  POST join_test/_doc?routing=1?refresh
+  {
+    "name": "张三",
+    "my_join_field": {
+      "name": "employee",
+      "parent": "2"
+    }
+  }
+  ```
+
+### 数据查询
+
+1. 查询父级数据
+
+   使用has_child关键字进行查询，type指定子级的类型。并且只能查询出存在子级的父级数据。
+
+   ```json
+   GET join_test/_search
+   {
+     "query": {
+       "has_child": {
+         "type": "employee",
+         "query": {
+           "match_all": {}
+         }
+       }
+     }
+   }
+   ```
+
+2. 查询子级数据
+
+   查询子级数据时，要使用has_parent关键字，并且parent_type指定为父级的类型。
+
+   ```json
+   GET join_test/_search
+   {
+     "query": {
+       "has_parent": {
+         "parent_type": "depart",
+         "query": {
+           "match_all": {}
+         }
+       }
+     }
+   }
+   //指定id查询
+   GET join_test/_search
+   {
+     "query": {
+       "parent_id": {
+         "type": "employee",
+         "id": 2
+       }
+     },
+     "aggs": {
+       "conut": {
+         "terms": {
+           "field": "my_join_field"
+         }
+       }
+     }
+   }
+   ```
