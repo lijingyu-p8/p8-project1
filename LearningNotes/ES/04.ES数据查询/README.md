@@ -338,9 +338,17 @@ GET product/_doc/8888
 
 ## 聚合查询
 
+### 基本概念
+
 - 聚合允许使用者对 es 文档进行统计分析，类似关系型数据库中的 group by，也有很多其他的聚合，例如取最大值、平均值等等。
 
 - 聚合使用aggs关键字，使用"size": 0，可以不返回原始数据
+
+- 聚合分析的字段如果是text类型，一定打开doc value创建正排索引，否则打开fielddata =true(不推荐)。
+
+- bucket：桶
+
+- metirc：度量（单位、数量）
 
   ```json
   GET product/_search
@@ -388,7 +396,186 @@ GET product/_doc/8888
 
   ![image-20210808220509565](images/aggs-2.png)
 
-- s
+### 聚合排序
+
+- 排序
+
+  order可以指定排序字段，也可以指定嵌套的aggs聚合查询的name进行排序。
+  _key：按每个桶的键值数值排序，字符串值的字母顺序排序，只在 terms 内使用。
+
+  ```json
+  GET product/_search?size=0
+  {
+    "aggs": {
+      "tag_avg_price": {
+        "terms": {
+          "field": "tags.keyword",
+          "order": {
+            "agg_price": "asc"
+          }
+        },
+        "aggs": {
+          "agg_price": {
+            "avg": {
+              "field": "price"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210815161143574](images/aggs-order1.png)
+
+- 多桶排序
+
+  多个aggs的name进行排序，一级、二级。
+
+  ```json
+  "terms": {
+          "field": "tags.keyword",
+          "order": {
+            "agg_stats>stats.sum": "desc"
+          }
+        },
+  ```
+
+  ```
+  GET product/_search
+  {
+    "size": 0,
+    "aggs": {
+      "tag_avg_price": {
+        "terms": {
+          "field": "tags.keyword",
+          "order": {
+            "agg_stats>stats.sum": "desc"
+          }
+        },
+        "aggs": {
+          "agg_stats": {
+            "filter": {
+              "terms": {
+                "type.keyword": [
+                  "耳机","手机","电视"
+                ]
+              }
+            },
+            "aggs": {
+              "stats": {
+                "extended_stats": {
+                  "field": "price"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  extended_stats会把所有的计算结果进行展示，比如sum、avg、max等等
+
+  ![image-20210815174758474](images/aggs-order2.png)
+
+### global
+
+- 默认的aggs聚合查询，是受到外层的查询结果的影响。
+
+- 当aggs聚合查询内部嵌套了下钻分析，使用了global，则global层的查询，是不受外层影响的。
+
+  ```json
+  GET product/_search?size=0
+  {
+    "query": {
+      "match": {
+        "name": "手机"
+      }
+    },
+    "aggs": {
+      "avg_price1": {
+        "avg": {
+          "field": "price"
+        }
+      },
+      "avg_price2": {
+        "global": {}, 
+        "aggs": {
+          "avg_price2": {
+            "avg": {
+              "field": "price"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  外层的avg聚合，受到了query的影响，计算的结果是在query结果基础上进行分析的。内部的global是全局分析。不受外层影响。
+
+- ![image-20210815162836093](images/aggs-global-1.png)
+
+### histogram
+
+- 柱状图聚合，可以设定间隔区间。
+
+  1. interval：设定间隔区间
+  2. min_doc_count：只展示结果大于等于1条的数据，可以过滤掉空数据。
+  3. keyed：展示bucket结果中，是key-value形式
+  4. missing：
+  5. extended_bounds：当统计数据时，最大数据不到设定的最大值，会自动补充，并count为0；
+
+  ```json
+  GET product/_search
+  {
+    "size": 0,
+    "aggs": {
+      "price": {
+        "histogram": {
+          "field": "price",
+          "interval": 1000,
+          "min_doc_count": 0,
+          "keyed": true,
+          "missing": 4999,
+          "extended_bounds": {
+            "min": 0,
+            "max": 10000
+          }
+        },
+        "aggs": {
+          "avg_price": {
+            "avg": {
+              "field": "price"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210815172023702](images/histogram.png)
+
+- date-histogram
+
+  时间格式的柱状图统计。format格式化
+
+  ![image-20210815173525084](images/date-histogram.png)
+
+  
+
+- d
+
+- d
+
+- d
+
+- d
+
+- 
 
 ## 批量查询
 
@@ -1287,3 +1474,62 @@ GET product/_doc/8888
      }
    }
    ```
+
+## 高亮查询
+
+- 查询结果中关键词高亮显示，一般使用默认配置即可。
+
+- 三种高亮
+
+  1. unified ：默认的高亮方式，使用Lucene的实现方式。
+  2. plain ：性能较高，消耗少量内存，性价比高。
+  3. fvh：fast vactor highlighter 适合字段较大，较复杂的查询情况，字段需要设置为vactor类型。
+
+  常用plain即可。
+
+- 自定义标签
+
+  1. pre_tag：起始标签
+  2. post_tag：结束标签
+  3. 每个高亮字段都需要对应一个查询
+
+  ```json
+  GET news/_search
+  {
+    "query": {
+      "bool": {
+        "should": [
+          {
+            "match": {
+              "title": "baoqiang"
+            }
+          },
+          {
+            "match": {
+              "name": "baoqiang"
+            }
+          }
+        ]
+      }
+    },
+    "highlight": {
+      "fields": {
+        "title": {
+          "pre_tags": "<b>",
+          "post_tags": "</b>",
+          "type": "unified"
+        },
+        "name": {
+          "pre_tags": "<b>",
+          "post_tags": "</b>",
+          "type": "unified"
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210815121901367](images/high-light-.png)
+
+## 
+
