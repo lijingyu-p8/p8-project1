@@ -619,11 +619,104 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
 
   ![image-20210815221155749](images/cardinality.png)
 
-- d
+### top_hits
 
-- d
+- 取前n条数据。
 
-- 
+  按照type进行分组，按照每组数量的倒序排序，取前两个bucket（组）。并且每组内数据，按照价格倒序排序，取前两个组内明细数据。
+
+  ```json
+  GET product/_search
+  {
+    "size": 0,
+    "aggs": {
+      "top_tags": {
+        "terms": {
+          "field": "type.keyword",
+          "size": 2,
+          "order": {
+            "_count": "desc"
+          }
+        },
+        "aggs": {
+          "top_type": {
+            "top_hits": {
+              "size": 2,
+              "sort": [
+                {
+                  "price": "desc"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+### filters
+
+- filers做聚合的时候，可以对除了指定的聚合条件进行聚合外，还可以对条件外的数据做other聚合。
+
+- other_bucket：是否对剩余数据做聚合
+
+- other_bucket_key：指定other的聚合的key
+
+  ```json
+  GET product/_search
+  {
+    "size": 0,
+    "aggs": {
+      "test_filters": {
+        "filters": {
+          "other_bucket": true,
+          "other_bucket_key": "other_type",
+          "filters": {
+            "phone": {
+              "term": {
+                "type.keyword": "手机"
+              }
+            },
+            "tv": {
+              "term": {
+                "type.keyword": "电视"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210816214702491](images/filters-1.png)
+
+### 深度优先、广度优先
+
+- terms桶聚合，ES基于我们的数据动态进行聚合分组构建桶，但是es并不知道会构建出多少个桶，所以会把所有的数据都拿到内存中进行计算，大多数情况下单个字段的聚合速度还是可以的，但是如果多个字段进行聚合，就会导致构建大量的组，最终有可能导致发生OOM问题。
+- 比如1万个演员，每个演员演了10部电影，要聚合演员点赞数前10的演员、并且演员点赞数前10的电影，就需要聚合1万+1万*10个组合，如果聚合的深度再多一层，聚合的组合数据量就会更大。这就会很容易导致jvm问题。
+- 深度优先：先聚合所有数据，构建一颗完整的树，再进行数据筛选、剔除无用数据。
+- 广度优先：先构建第一层的聚合结果，剔除无用数据，再进行下一层数据的聚合，就会减少内存的消耗，提升速度。但是广度优先只适用于每个组聚合数量远小于组总数的情况。
+- terms.collect_mode属性用于设置广度优先还是深度优先，默认是深度优先（depth_first），广度优先则修改为breadth_first。
+
+### adjacency_matrix邻接矩阵
+
+- 对每个聚合结果单独进行展示，并且会对每个聚合结果进行聚合&运算聚合。比如聚合A、B、C，除了展示A、B、C条件的聚合结果外，还会进行A&B、A&C、B&C结果的聚合。
+
+- A&B的含义是：doc既要匹配A条件的聚合又要匹配B条件的聚合。
+
+  ```
+  PUT /emails/_bulk?refresh
+  {"index":{"_id":1}}
+  {"accounts":["a","f"]}
+  {"index":{"_id":2}}
+  {"accounts":["a","b"]}
+  {"index":{"_id":3}}
+  {"accounts":["c","b"]}
+  ```
+
+  ![image-20210816225430405](images/邻接矩阵.png)
 
 ## 批量查询
 
