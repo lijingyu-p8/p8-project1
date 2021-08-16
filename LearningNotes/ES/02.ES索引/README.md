@@ -539,6 +539,23 @@ PUT product(索引name)
 
 ## 三、索引修改
 
+已经存在的属性字段，不能修改type、analyzer。只能修改fielddata这种附属的配置信息。
+
+```json
+PUT product/_mapping
+{
+  "properties": {
+    "desc": {
+      "type": "text",
+      "fielddata": true,
+      "analyzer": "ik_max_word"
+    }
+  }
+}
+```
+
+
+
 ## 四、索引删除
 
 ```

@@ -525,7 +525,7 @@ GET product/_doc/8888
   1. interval：设定间隔区间
   2. min_doc_count：只展示结果大于等于1条的数据，可以过滤掉空数据。
   3. keyed：展示bucket结果中，是key-value形式
-  4. missing：
+  4. missing：当某条记录是空置时，会给默认值
   5. extended_bounds：当统计数据时，最大数据不到设定的最大值，会自动补充，并count为0；
 
   ```json
@@ -565,11 +565,59 @@ GET product/_doc/8888
 
   ![image-20210815173525084](images/date-histogram.png)
 
-  
 
-- d
 
-- d
+### stats扩展
+
+ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、max、avg等计算结果，ES提供扩展stats关键字指令，可以默认提供一系列的默认实现。
+
+- 数值类型
+
+  ```json
+  GET product/_search?size=0
+  {
+    "aggs": {
+      "price": {
+        "stats": {
+          "field": "price"
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210815213552986](images/数值-stats.png)
+
+- string类型
+
+  默认提供字符总数、最小长度、最大长度、平均长度等信息。
+
+  entropy 熵值：基于聚合所收集到的所有项中每个字符出现的概率
+
+  ```json
+  GET product/_search?size=0
+  {
+    "aggs": {
+      "desc": {
+        "string_stats": {
+          "field": "desc"
+        }
+      }
+    }
+  }
+  ```
+
+  ![image-20210815214526293](images/string-stats.png)
+
+### cardinality
+
+- 去重查询，并且几乎所有的aggs聚合查询，都支持script
+
+- ES聚合查询是由1-6%的误差的，precision_threshold参数可以减小误差，但是会增加对内存的消耗。
+
+- precision_threshold默认值为3000，最大值为4万，一般情况下不需要特意改变。设定值越大，精度越高。但是对内存的消耗也越大，内存消耗为precision_threshold * 8 个Byte，1000*8/1000 大概8kb。如果本身数据重复度就很低，没必要设置太大，去重查询是比较消耗资源的。
+
+  ![image-20210815221155749](images/cardinality.png)
 
 - d
 
