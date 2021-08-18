@@ -19,9 +19,9 @@ PUT product(索引name)
 }
 ```
 
-### setting
+### Setting
 
-#### 分析器
+#### 1、分析器
 
 - 分析器四大组成部分
 
@@ -255,7 +255,22 @@ PUT product(索引name)
    }
    ```
 
-### mapping
+#### 2、常用设置
+
+- 设置后不可更改
+  1. index.number_of_shards：主分片个数（7.x以后默认是1，以前默认是5），每个索引分片数量上限：1024。
+  2. index.codec：best_compression（压缩元数据，会降低性能）。默认是default，不压缩。
+  3. blocks.read_only：设置为true使索引和元数据只读。
+  8.	blocks.read：true，禁止索引读操作。
+  9.	blocks.write：true，禁止写索引。
+  10.	blocks.metadata：true，禁用元数据读写。
+- 设置后可重复修改
+  1. number_of_replicas：为每个主分片分配的副本个数，默认是1。
+  2. index.auto_expand_replicas：根据集群中数据节点的数量自动扩展副本的数量。设置为以短划线分隔的上下限（例如0-5）或all 用于上限（例如0-all）。默认为false（即禁用）。
+  3. index.max_result_window：最大值页容量，默认1W。
+- 
+
+### Mapping
 
 ​        映射是定义文档及其包含的字段如何存储和索引的过程。每个文档都是一批字段的集合，每个字段都有自己的数据类型、默认值、分析器、是否被索引等等配置信息。这些都是映射里面可以设置的，按照最优规则处理数据对ES性能提高很大，因此才需要建立映射，并且需要思考如何建立映射才能对性能更好。
 
@@ -467,10 +482,83 @@ PUT product(索引name)
   23. store
 
       设置字段是否仅查询,数据会设置在fields标签下，和source平级，但是会存储两份 
+      
+  24. similarity
 
-### aliases
+      相关度评分算法。
 
-### dynamic
+      BM25：概率相关性模型（5.0之后（包括）默认算法）
+
+      classic：空间向量模型（向量空间模型），TF-IDF（5.0之前）
+
+      boolean：
+
+  25. store
+
+      开辟另一块存储空间。可以节省带宽。虽然_source属性可以指定返回的元数据都包含哪些字段，但是实际上在字段过滤之前，所有的元数据还是会被查询返回，并且占用带宽。_source设置为false之后，原始数据不会进行存储，只会存储生成的倒排索引，可以节省磁盘，并且不会影响搜索。
+
+      ```
+      "mappings": {
+          "_source": {
+            "enabled": false
+          }
+        }
+      ```
+
+      禁用source之后带来的问题：
+
+      1.	update，update_by_query和reindex不可用。
+      2.	高亮失效
+      3.	reindex失效，原本可以修改的mapping部分参数将无法修改，并且无法升级索引。
+      4.	无法查看元数据和聚合搜索。
+      5.	影响索引的容灾能力。
+         如果是出于节省磁盘空间的目的，可以考虑压缩元数据（LZ4压缩）。但是会损失性能。
+
+### Aliases
+
+- 为索引创建别名，搜索时也可以使用别名进行搜索。并且创建别名的时候，可以设置filter条件。这样直接使用别名查询的时候，就可以查询到filter后的数据了。
+
+- 在创建索引的时候创建别名
+
+  ```json
+  PUT product
+  {
+    "aliases": {
+      "my_aliase": {
+        "filter": {
+          "term": {
+            "FIELD": "VALUE"
+          }
+        }
+      }
+    },
+    "mappings": {},
+    "settings": {}
+  }
+  ```
+
+- 在已存在的索引上创建别名
+
+  ```json
+  PUT product/_alias/price
+  {
+    "filter": {
+      "term": {
+        "price": "4399"
+      }
+    }
+  }
+  ```
+
+- 使用别名进行查询
+
+  如果别名设置了filter，则将会查询到filter之后的结果。
+
+  ```
+  GET price/_search
+  ```
+
+### Dynamic
 
 - properties同级别，用于设置是否可以动态添加字段。
 
@@ -554,8 +642,6 @@ PUT product/_mapping
 }
 ```
 
-
-
 ## 四、索引删除
 
 ```
@@ -591,3 +677,132 @@ DELETE product(索引name)
 /_cat/templates              #输出当前正在存在的模板信息
 ```
 
+## 六、索引常用操作
+
+1. 判断索引是否存在：HEAD /my_target_index
+
+   存在返回200，不存在则返回404.
+
+2. 关闭/打开索引
+
+   - POST my_index/_close
+
+     关闭之后，将不允许进行索引的增删改查了。
+
+   - POST my_index/_open
+
+3. h
+
+## 七、索引压缩
+
+- 索引压缩：实际上是压缩的分片，并非在原有索引上压缩，而是生成了一个新的索引。
+
+- 由于使用了hash路由算法以及索引不可变的特性，target index分片数量必须为source index的约数。
+
+  比如原主分片数量为12，那么目标主分片数量只能是6、4、3、2、1，如果主分片的数量是质数，那目标主分片的数量只能是1。
+
+- 能够进行压缩的前提条件：
+
+  1. 要压缩的索引必须是只读
+  2. target index的所有p shard必须位于同一节点。
+  3. 索引的健康状态必须为green
+  4. target index不能已存在
+  5. 索引的doc数量不能超过2 147 483 519个，因为单个分片最大支持这么多个doc。
+  6. 目标节点所在服务器必须有足够大的磁盘空间。
+  7. target index name必须满足以下条件
+     - 仅小写
+     2.	不能包括\，/，*，?，"，<，>，|，``（空格字符）， ,，#
+     3.	索引名中不能包含：冒号
+     4.	不能以-，_，+等特殊字符开头
+     6.	不能超过255个字节
+     6.	自定义的索引名称不建议使用以.开头的名称
+
+- 索引压缩实际步骤：
+
+  原始状态：
+
+  ![image-20210818230524072](images/索引分片压缩-1.png)
+
+  1. 备份索引：防止当删除replicas副本分片之后，主分片损坏，无法回滚的问题。
+
+  2. 设置禁止写入：防止索引压缩期间有新的写入操作。
+
+  3. 删除副本：减少数据量，加快索引压缩的速度。
+
+  4. 迁移主分片。
+
+     ```
+     PUT /my_index/_settings
+     {
+       "settings": {
+         "index.number_of_replicas": 0,
+         "index.routing.allocation.require._name": "node-1",
+         "index.blocks.write": true
+       }
+     }
+     ```
+
+     index.number_of_replicas：副本分片设置为0，ES即会删除所有的副本分片。
+
+     index.routing.allocation.require._name: node-1 转移到目标主分片
+
+     index.blocks.write: true 设置禁止写入
+
+     准备工作做完，删除了副本分片。![image-20210818231243604](images/索引分片压缩-2.png)
+
+  5. 执行压缩
+
+     ```
+     POST /my_index/_shrink/my_target_index
+     {
+       "settings": {
+         "index.number_of_replicas": 1,
+         "index.number_of_shards": 3, 
+         "index.codec": "best_compression" 
+       }
+     }
+     ```
+
+     index.codec: best_compression 压缩算法
+
+     压缩后的状态：（3个主分片，每个主分片一个副本分片）
+
+     ![image-20210818231638204](images/索引分片压缩-3.png)
+
+  6. recover重新分配分片。
+
+  7. 恢复备份前的属性配置。
+
+     ```
+     PUT my_target_index/_settings
+     {
+       "index.routing.allocation.require._name": null,
+       "index.blocks.write": false //关闭禁止写
+     }
+     ```
+
+     routing的name设置为null，ES就会重新进行分片负载。
+
+     关闭禁止写
+
+  8. 监控压缩过程、进度
+
+     GET _cat/recovery?v
+
+     ![image-20210818232012355](images/索引分片压缩-4.png)
+
+     
+
+  9. d
+
+  10. d
+
+  11. d
+
+  12. d
+
+  13. d
+
+  14. d
+
+  15. 
