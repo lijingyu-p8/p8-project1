@@ -791,18 +791,67 @@ DELETE product(索引name)
 
      ![image-20210818232012355](images/索引分片压缩-4.png)
 
-     
 
-  9. d
+## 八、rollover index
 
-  10. d
+- 通过别名的方式，可以对已经创建的索引进行数据拆分，比如按照索引大小、数据量、时间等维度进行数据拆分。类似数据库的分库分表，日志按天进行拆分。好处是可以降低单个索引的数据量，提升整体查询效率。
 
-  11. d
+- 前提条件：进行拆分的索引，必须拥有别名。
 
-  12. d
+- 拆分语句
 
-  13. d
+  ```json
+  PUT /my_index
+  {
+    "mappings": {
+      "properties": {
+        "test": {
+          "type": "text"
+        }
+      }
+    },
+    "aliases": {
+      "logs_write": {}
+    }
+  }
+  #为my_index创建
+  POST /logs_write/_rollover/my-index-000001
+  {
+    "conditions": {
+      "max_age":   "7d",
+      "max_docs":  2,
+      "max_size": "5gb"
+    }
+  }
+  ```
 
-  14. d
+  1. max_age:   7d，时间维度
+  2. max_docs:  2 文档数量
+  3. max_size: 5gb 索引大小
+  4. 当满足条件的时候，执行rollover，可以进行索引拆分。
 
-  15. 
+  ![image-20210819211830641](images/rollover-1.png)
+
+- 按照时间维度进行拆分
+
+  ```
+  PUT /%3Cmy_index-%7Bnow%2Fd%7D-1%3E
+  {
+    "aliases": {
+      "logs_write": {}
+    }
+  }
+  ```
+
+  原索引标识使用url encode进行编码，按照时间格式进行设置。
+
+  ```
+  POST /logs_write/_rollover 
+  {
+    "conditions": {
+      "max_docs":   "0"
+    }
+  }
+  ```
+
+  如果是一天执行一次，第二天执行的时候，索引就会进行按天拆分。
