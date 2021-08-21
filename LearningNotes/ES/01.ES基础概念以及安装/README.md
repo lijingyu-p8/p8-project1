@@ -126,8 +126,8 @@ chown -R esuser /usr/local/soft 给账户赋予目录权限
 进入conf目录，修改
 vi /usr/local/soft/es/elasticsearch-7.13.2/config/elasticsearch.yml
 修改配置：
-network.host: 0.0.0.0 //代表允许所有ip访问
-cluster.initial_master_nodes: ["127.0.0.1"] //绑定服务器ip
+network.host: 192.168.73.90 //配置向外暴露的ip。0.0.0.0代表允许所有ip访问
+cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必须有master节点
 ```
 
 ![image-20210821210223288](images/安装问题-config-1.png)
@@ -152,6 +152,14 @@ cluster.initial_master_nodes: ["127.0.0.1"] //绑定服务器ip
 2. Linux访问
 
    ![image-20210821211522339](images/linux访问测试-1.png)
+   
+3. 如果访问不了，关闭防火墙
+
+   ```
+   >>>关闭防火墙
+   systemctl stop firewalld.service            #停止firewall
+   systemctl disable firewalld.service        #禁止firewall开机启动
+   ```
 
 #### 3、普遍遇到的问题
 
@@ -215,15 +223,24 @@ http.cors.allow-origin: "*"
 
 ### 2.4、常用配置
 
-- 
+- Cluster&Node
 
   ```yaml
-  cluster.name: 
+  cluster.name:
   	配置elasticsearch的集群名称，默认是elasticsearch。建议修改成一个有意义的名称。
   node.name:
-  	节点名，通常一台物理服务器就是一个节点，es会默认随机指定一个名字，建议指定一个有意义的名称，方便管理
-  	一个或多个节点组成一个cluster集群，集群是一个逻辑的概念，节点是物理概念，后边章节会详细介绍。
-  path.conf: 
+  	节点名，通常一台物理服务器就是一个节点，es会默认随机指定一个名字，建议指定一个有意义的名称，方便管理。
+  	一个或多个节点组成一个cluster集群，集群是一个逻辑的概念，节点是物理概念。
+  node.master: 
+  	指定该节点是否有资格被选举成为master结点，默认是true，如果原来的master宕机会重新选举新的master。
+  node.data: 
+  	指定该节点是否存储索引数据，默认为true。
+  ```
+  
+- Paths
+
+  ```yaml
+  path.conf:
   	设置配置文件的存储路径，tar或zip包安装默认在es根目录下的config文件夹，rpm安装默认在/etc/ elasticsearch
   path.data:
   	设置索引数据的存储路径，默认是es根目录下的data文件夹，可以设置多个存储路径，用逗号隔开。
@@ -231,17 +248,36 @@ http.cors.allow-origin: "*"
   	设置日志文件的存储路径，默认是es根目录下的logs文件夹
   path.plugins: 
   	设置插件的存放路径，默认是es根目录下的plugins文件夹
+  ```
+  
+- Memory
+
+  ```yaml
   bootstrap.memory_lock: true
-  	设置为true可以锁住ES使用的内存，避免内存与swap分区交换数据。
+  	设置为true可以锁住ES使用的内存，避免内存与swap分区交换数据。swap分区速度会非常慢。
+  ```
+  
+- Network
+
+  ```yaml
   network.host: 
   	设置绑定主机的ip地址，设置为0.0.0.0表示绑定任何ip，允许外网访问，生产环境建议设置为具体的ip。
   http.port: 9200
   	设置对外服务的http端口，默认为9200。
   transport.tcp.port: 9300  集群结点之间通信端口
-  node.master: 
-  	指定该节点是否有资格被选举成为master结点，默认是true，如果原来的master宕机会重新选举新的master。
-  node.data: 
-  	指定该节点是否存储索引数据，默认为true。
+  http.cors.enabled: 
+      是否允许跨域
+  http.cors.allow-origin: 
+      "*"
+  ```
+  
+- Discovery
+
+  ```yaml
+  discovery.seed_hosts:
+      配置所有node.master为true的节点。
+  cluster.initial_master_nodes: 
+      设置初始master是哪个节点，启动服务后可以自动生效，省略选举过程，推荐配置集群中的仅master节点
   discovery.zen.ping.unicast.hosts: ["host1:port", "host2:port", "..."]
   	设置集群中master节点的初始列表。
   discovery.zen.ping.timeout: 3s
@@ -251,5 +287,5 @@ http.cors.allow-origin: "*"
   node.max_local_storage_nodes: 
   	单机允许的最大存储结点数，通常单机启动一个结点建议设置为1，开发环境如果单机启动多个节点可设置大于1。
   ```
-
+  
   
