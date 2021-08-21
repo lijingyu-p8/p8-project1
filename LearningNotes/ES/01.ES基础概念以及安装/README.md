@@ -100,6 +100,98 @@ bin目录下
 
 ### 2.2、Linux安装
 
+#### 1、安装
+
+```
+创建目录
+/usr/local/soft/es
+下载
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.13.2-linux-x86_64.tar.gz
+解压缩
+tar -xzf es.zip
+```
+
+![image-20210821205538638](images/安装-1.png)
+
+```
+创建非root账户，es只能在非root账户下
+adduser esuser：创建es账号
+passwd esuser：设置es账号的密码
+chown -R esuser /usr/local/soft 给账户赋予目录权限
+```
+
+修改es配置。如果不修改，将只能通过127.0.0.1:9200访问
+
+```
+进入conf目录，修改
+vi /usr/local/soft/es/elasticsearch-7.13.2/config/elasticsearch.yml
+修改配置：
+network.host: 0.0.0.0 //代表允许所有ip访问
+cluster.initial_master_nodes: ["127.0.0.1"] //绑定服务器ip
+```
+
+![image-20210821210223288](images/安装问题-config-1.png)
+
+使用创建的es用户登陆
+
+```
+进入bin目录
+./elasticsearch
+```
+
+![image-20210821210436068](images/linux-es启动-1.png)
+
+![image-20210821210606027](images/linux-es启动成功.png)
+
+#### 2、访问测试
+
+1. 浏览器访问
+
+   ![image-20210821211429396](images/浏览器访问测试-1.png)
+
+2. Linux访问
+
+   ![image-20210821211522339](images/linux访问测试-1.png)
+
+#### 3、普遍遇到的问题
+
+1. max file descriptors [4096] for elasticsearch process is too low, increase to at least [65535]
+
+   ```
+   vi  /etc/security/limits.conf
+   在最后增加配置
+   * soft nofile 65536
+   * hard nofile 65536
+   ```
+
+   此文件修改后需要重新登录用户，才会生效
+
+   ![image-20210821203225401](images/linux问题max-file-1.png)
+
+2. max number of threads [3795] for user [esuser] is too low, increase to at least [4096]
+
+   最大线程数不够
+
+   ```
+   vi  /etc/security/limits.conf
+   在最后增加配置
+   * soft nproc 4096
+   * hard nproc 4096
+   ```
+
+   ![image-20210821203941397](images/linux问题-max-threadnum-1.png)
+
+3. max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+
+   ```
+   vi /etc/sysctl.conf
+   在最后增加配置
+   vm.max_map_count=262144
+   然后执行命令/sbin/sysctl -p 立即生效
+   ```
+
+   ![image-20210821211157577](images/安装问题-max-virtual-1.png)
+
 ### 2.3、head插件安装
 
 ```
