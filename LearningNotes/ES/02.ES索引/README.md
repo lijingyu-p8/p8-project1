@@ -479,23 +479,19 @@ PUT product(索引name)
 
       为null值设置默认值，"null_value": "NULL"
 
-  23. store
-
-      设置字段是否仅查询,数据会设置在fields标签下，和source平级，但是会存储两份 
-      
   24. similarity
 
       相关度评分算法。
-
+  
       BM25：概率相关性模型（5.0之后（包括）默认算法）
 
       classic：空间向量模型（向量空间模型），TF-IDF（5.0之前）
 
       boolean：
 
-  25. store
+  25. store&_source
 
-      开辟另一块存储空间。可以节省带宽。虽然_source属性可以指定返回的元数据都包含哪些字段，但是实际上在字段过滤之前，所有的元数据还是会被查询返回，并且占用带宽。_source设置为false之后，原始数据不会进行存储，只会存储生成的倒排索引，可以节省磁盘，并且不会影响搜索。
+      字段属性设置store=true，ES会开辟另一块存储空间，将字段数据单独存储，与原始数据分离，当只查询store=true的字段时，可以节省带宽。虽然_source属性可以指定返回的元数据都包含哪些字段，但是实际上在字段过滤之前，所有的元数据还是会被查询返回，并且占用带宽。_source设置为false之后，原始数据不会进行存储，只会存储生成的倒排索引，可以节省磁盘，并且不会影响搜索。
 
       ```
       "mappings": {
@@ -504,9 +500,36 @@ PUT product(索引name)
           }
         }
       ```
-
+  
+      ```json
+      PUT my_index
+      {
+        "mappings": {
+          "properties": {
+            "title": {
+              "store": true,
+              "type": "text"
+            },
+            "date": {
+              "store": true,
+              "type": "date"
+            },
+            "content": {
+              "type": "text"
+            },
+            "desc":{
+              "type":"text",
+              "index": false
+            }
+          }
+        }
+      }
+      ```
+      
+      ![image-20210821094004061](images/store-1.png)
+      
       禁用source之后带来的问题：
-
+      
       1.	update，update_by_query和reindex不可用。
       2.	高亮失效
       3.	reindex失效，原本可以修改的mapping部分参数将无法修改，并且无法升级索引。
@@ -691,7 +714,19 @@ DELETE product(索引name)
 
    - POST my_index/_open
 
-3. h
+3. refresh
+
+   ![](images/写入原理.png)
+
+   ES接收到请求，数据会直接写入到缓存buffer中，然后默认一秒钟一次，定时将buffer写入到segment文件中，这个时候segment会将搜索状态打开，就可以查询到数据了。可以通过refresh_interval配置改变定时时间，也可以手动post/index/_refresh将数据写入到segment中。
+
+4. segments
+
+   GET my_index/_segments
+
+   可以查看当前索引的segments相关信息，包括commit数量、num_docs文档数量等相关信息。
+
+   ![image-20210821150410734](images/segment-1.png)
 
 ## 七、索引压缩
 
@@ -855,3 +890,46 @@ DELETE product(索引name)
   ```
 
   如果是一天执行一次，第二天执行的时候，索引就会进行按天拆分。
+  
+- rollover创建新的索引时，不会保留mapping、setting等相关设置。所以需要使用index_template创建索引模板。
+
+## 九、索引模板
+
+- 可以通过index template创建索引模板，作用是为匹配的索引创建一个模板。rollover在动态创建索引的时候，可以利用索引模板动态指定mapping、setting等相关配置。
+
+  ```json
+  POST _index_template/template_1
+  {
+    "index_patterns": [
+      "daylog*"
+    ],
+    "priority": 1,
+    "template": {
+      "settings": {
+        "number_of_shards": 1
+      },
+      "mappings": {
+        "properties": {
+          "name": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+  可以设置分片、setting、mapping等信息。当匹配到index_patterns指定的关键词之后，就会为匹配到的索引使用相应的模板进行创建了。
+
+## 十、stats
+
+- 可以查看索引资源的占用情况和一些系统记录
+- ![image-20210821144527830](images/stats-1.png)
+
+- 通过stats可以看到当前索引的文档数据总数、存储空间大小、get指令总数、search总数等相关信息。
+- recovery：es宕机之后，OS Cache内存中一部分数据还没持久化到磁盘中，这部分数据的操作记录会记录在tranlog里，recovery指令是可以在ES恢复服务之后，将translog里的数据进行恢复。
