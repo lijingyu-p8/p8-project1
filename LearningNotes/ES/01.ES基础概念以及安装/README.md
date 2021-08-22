@@ -264,7 +264,8 @@ http.cors.allow-origin: "*"
   	设置绑定主机的ip地址，设置为0.0.0.0表示绑定任何ip，允许外网访问，生产环境建议设置为具体的ip。
   http.port: 9200
   	设置对外服务的http端口，默认为9200。
-  transport.tcp.port: 9300  集群结点之间通信端口
+  transport.tcp.port: 9300  
+      集群结点之间通信端口
   http.cors.enabled: 
       是否允许跨域
   http.cors.allow-origin: 
