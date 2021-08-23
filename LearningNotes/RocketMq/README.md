@@ -143,3 +143,67 @@
 
 - 每条消息可以设置按照业务逻辑，设置相关的业务的key。
 
+
+
+## 消息的存储机制
+
+- RocketMQ中的消息存储在本地文件系统中，这些相关文件默认在当前用户主目录下的store目录中。一般都需要自定义存储位置。
+
+![](images/消息的存储机制-1.png)
+
+- Producer发送数据到Broker，数据会被记录到commitLog里，并且会更新当前offset消费记录。
+
+- 文件列表
+
+  ![image-20210820123845958](images/消息的存储机制-文件列表-1.png)
+
+  1. abort
+
+  2. checkpoint
+
+  3. commitLog
+
+     数据存储真正的物理单元。一个commitLog大小为1g，commitLog目录中存放着很多的mappedFile文件，当前Broker中的所有消息都是落盘到这些mappedFile文件中的。mappedFile文件大小为1G（小于等于1G），文件名由20位十进制数构成，表示当前文件的第一条消息的起始位移偏移量。
+
+     ```
+     第一个文件名一定是20位0构成的。因为第一个文件的第一条消息的偏移量commitlog offset为0
+     当第一个文件放满时，则会自动生成第二个文件继续存放消息。假设第一个文件大小是1073741820字节（1G = 1073741824字节），则第二个文件名就是00000000001073741824。
+     以此类推，第n个文件名应该是前n-1个文件大小之和。
+     一个Broker中所有mappedFile文件的commitlog offset是连续的
+     ```
+
+     需要注意的是，一个Broker中仅包含一个commitlog目录，所有的mappedFile文件都是存放在该目录中的。即无论当前Broker中存放着多少Topic的消息，这些消息都是被顺序写入到了mappedFile文件中的。也就是说，这些消息在Broker中存放时并没有被按照Topic进行分类存放。
+
+     ![image-20210823123910891](images/commitlog-offset-1.png)
+
+     mappedFile文件内容由一个个的消息单元构成。每个消息单元中包含消息总长度MsgLen、消息的物理位置physicalOffset、消息体内容Body、消息体长度BodyLength、消息主题Topic、Topic长度TopicLength、消息生产者BornHost、消息发送时间戳BornTimestamp、消息所在的队列QueueId、消息在Queue中存储的偏移量QueueOffset等近20余项消息相关属性。
+
+  4. config
+
+  5. consumequeue
+
+     consumequeue的物理结构是按照每个topic的名称进行分类，树状结构的文件夹，每个topic下还会按照每个queue的queueId进行分类，每个queue下是具体的文件。
+
+     consumequeue文件名也由20位数字构成，表示当前文件的第一个索引条目的起始位移偏移量。与mappedFile文件名不同的是，其后续文件名是固定的。因为consumequeue文件大小是固定不变的。
+
+     ![image-20210823124249332](images/consumequeue文件目录结构-1.png)
+
+     每个consumequeue文件可以包含30w个索引条目，每个索引条目包含了三个消息重要属性：消息在mappedFile文件中的偏移量CommitLog Offset、消息长度、消息Tag的hashcode值。这三个属性占20个字节，所以每个文件的大小是固定的30w * 20字节。
+
+     ![image-20210823124800293](images/consumequeue-1.png)
+
+  6. index
+
+     indexFile提供了通过key和时间戳来查找消息的功能。
+
+  7. lock
+
+- dd
+
+- d
+
+- d
+
+- 
+
+## 数据零拷贝
