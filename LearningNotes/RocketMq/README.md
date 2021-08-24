@@ -198,11 +198,47 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 #### 2.6、index
 
-index目录中存放着indexFile文件，indexFile文件提供了通过key和时间戳来查找消息的功能。
+- index目录中存放着indexFile文件，indexFile文件提供了通过key和时间戳来查找消息的功能。
 
+- 索引条目结构
 
+  每个Broker中会包含一组indexFile，每个indexFile都是以一个时间戳命名的（这个indexFile被创建时的时间戳）。每个indexFile文件由三部分构成：indexHeader，slots槽位，indexes索引数据。每个indexFile文件中包含500w个slot槽。而每个slot槽又可能会挂载很多的index索引单元。
 
-#### 2.7lock
+  ![image-20210824161705389](images/index-file-1.png)
+
+  indexHeader固定40个字节，其中存放着如下数据：
+
+  ![image-20210824161812265](images/index-header-1.png)
+
+  1. beginTimestamp：该indexFile中第一条消息的存储时间
+  2. endTimestamp：该indexFile中最后一条消息存储时间
+  3. beginPhyoffset：该indexFile中第一条消息在commitlog中的偏移量commitlog offset
+  4. endPhyoffset：该indexFile中最后一条消息在commitlog中的偏移量commitlog offset
+  5. hashSlotCount：已经填充有index的slot数量（并不是每个slot槽下都挂载有index索引单元，这里统计的是所有挂载了index索引单元的slot槽的数量
+  6. indexCount：该indexFile中包含的索引单元个数（统计出当前indexFile中所有slot槽下挂载的所有index索引单元的数量之和）
+
+  indexFile中最复杂的是Slots与Indexes间的关系。在实际存储时，Indexes是在Slots后面的，但为了便于理解，将它们的关系展示为如下形式：
+
+  ![image-20210824162519265](images/index-header-2.png)
+
+  key的hash值 % 500w的结果即为slot槽位，然后将该slot值修改为该index索引单元的indexNo，根据这个indexNo可以计算出该index单元在indexFile中的位置。不过，该取模结果的重复率是很高的，为了解决该问题，在每个index索引单元中增加了preIndexNo，用于指定该slot中当前index索引单元的前一个index索引单元。而slot中始终存放的是其下最新的index索引单元的indexNo，这样的话，只要找到了slot就可以找到其最新的index索引单元，而通过这个index索引单元就可以找到其之前的所有index索引单元。
+
+  index索引单元默写20个字节，其中存放着以下四个属性：
+
+  ![image-20210824163007260](images/index-header-3.png)
+
+  1. keyHash：消息中指定的业务key的hash值
+  2. phyOffset：当前key对应的消息在commitlog中的偏移量commitlog offset
+  3. timeDiff：当前key对应消息的存储时间与当前indexFile创建时间的时间差
+  4. preIndexNo：当前slot下当前index索引单元的前一个index索引单元的indexNo
+
+- indexFile的创建
+
+  1. 当第一条带key的消息发送来后，系统发现没有indexFile，此时会创建第一个indexFile文件。
+  2. 当一个indexFile中挂载的index索引单元数量超出2000w个时，会创建新的indexFile。当带key的消息发送到来后，系统会找到最新的indexFile，并从其indexHeader的最后4字节中读取到indexCount。若indexCount >= 2000w时，会创建新的indexFile。
+  3. 一个indexFile的最大大小是：(40 + 500w * 4 + 2000w * 20)字节
+
+#### 2.7、lock
 
 
 
