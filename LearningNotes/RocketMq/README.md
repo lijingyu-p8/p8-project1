@@ -161,7 +161,11 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 #### 2.1、abort
 
+- 该文件在Broker启动后会自动创建，正常关闭Broker，该文件会自动消失。若在没有启动Broker的情况下，发现这个文件是存在的，则说明之前Broker的关闭是非正常关闭。
+
 #### 2.2、checkpoint
+
+- 其中存储着commitlog、consumequeue、index文件的最后刷盘时间戳。
 
 #### 2.3、commitLog
 
@@ -181,6 +185,28 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
   mappedFile文件内容由一个个的消息单元构成。每个消息单元中包含消息总长度MsgLen、消息的物理位置physicalOffset、消息体内容Body、消息体长度BodyLength、消息主题Topic、Topic长度TopicLength、消息生产者BornHost、消息发送时间戳BornTimestamp、消息所在的队列QueueId、消息在Queue中存储的偏移量QueueOffset等近20余项消息相关属性。
 
 #### 2.4、config
+
+- 存放着Broker运行期间的一些配置数据。
+
+  ![](images/config-1.png)
+
+  1. consumerFilter.json：消息过滤器
+
+  2. consumerOffset.json：客户端的消费进度
+
+     ![](images/consumerOffset-1.png)
+
+  3. delayOffset.json：延迟消息进度
+
+  4. subscriptionGroup.json：group的订阅数据
+
+     ![](images/subscriptionGroup-1.png)
+
+  5. topics.json：Topic的配置信息
+
+     ![](images/topics-1.png)
+
+- d
 
 #### 2.5、consumequeue
 
@@ -239,6 +265,8 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
   3. 一个indexFile的最大大小是：(40 + 500w * 4 + 2000w * 20)字节
 
 #### 2.7、lock
+
+- 运行期间使用到的全局资源锁。
 
 
 
