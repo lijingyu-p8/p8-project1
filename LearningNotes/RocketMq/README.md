@@ -206,7 +206,6 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
      ![](images/topics-1.png)
 
-- d
 
 #### 2.5、consumequeue
 
@@ -268,6 +267,42 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 - 运行期间使用到的全局资源锁。
 
+## 消息刷盘机制
 
+![](images/刷盘-1.png)
+
+### 1、同步刷盘
+
+- 消息发送到broker之后，持久化到磁盘上，再返回给producer响应。
+
+### 2、异步刷盘
+
+- 消息发送到broker之后，直接返回给producer响应，当内存中的消息堆积到一定程度再执行刷盘持久化操作。
+- 通过参数可以控制。Broker配置文件里的flushDiskType参数设置的，这个参数被配置成SYNC_FLUSH(同步)、ASYNC_FLUSH(异步)中的一个。
 
 ## 数据零拷贝
+
+### 1、机制
+
+![](images/mmap-1.png)
+
+1. 从磁盘复制数据到内核态内存。
+2. 从内核态内存复制到用户态内存。
+3. 然后从用户态内存复制到网络驱动的内核态内存。
+4. 最后是从网络驱动的内核态内存复制到网卡中进行传输。
+
+- MappedByteBuffer底层使用了操作系统的mmap机制，可以省略掉将数据复制到用户态这一步骤，可以直接从内核kernel将文件发送到网卡。但是MappedByteBuffer内存映射只能映射1.5G-2G大小，使用的是虚拟内存，所以RocketMq设定commitLog大小为1G.
+
+### 2、RocketMq实现
+
+- 首先，RocketMQ通过mmap零拷贝对文件进行读写操作，将对文件的操作转化为直接对内存地址进行操作，从而极大地提高了文件的读写效率。
+- 其次，consumequeue中的数据是顺序存放的，还引入了PageCache的预读取机制，使得对consumequeue文件的读取几乎接近于内存读取，即使在有消息堆积情况下也不会影响性能。
+
+### 3、PageCache
+
+- PageCache机制，页缓存机制，是OS对文件的缓存机制，用于加速对文件的读写操作。一般来说，程序对文件进行顺序读写 的速度几乎接近于内存读写速度，主要原因是由于OS使用PageCache机制对读写访问操作进行性能优化，将一部分的内存用作PageCache。
+- 写操作：OS会先将数据写入到PageCache中，随后会以异步方式由pdflush（page dirty flush)内核线程将Cache中的数据刷盘到物理磁盘
+- 读操作：若用户要读取数据，其首先会从PageCache中读取，若没有命中，则OS在从物理磁盘上加载该数据到PageCache的同时，也会顺序对其相邻数据块中的数据进行预读取。
+
+## 消息的消费模式
+
