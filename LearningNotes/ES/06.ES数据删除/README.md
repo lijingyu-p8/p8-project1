@@ -14,7 +14,7 @@ DELETE product/_doc/8888
 
 构建query条件，使用_delete_by_query进行条件删除
 
-```
+```json
 POST product/_delete_by_query
 {
   "query": {

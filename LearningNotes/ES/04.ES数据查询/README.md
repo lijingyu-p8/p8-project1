@@ -234,7 +234,7 @@ GET product/_doc/8888
 
   ![](images/range-1.png)
 
-  ```
+  ```json
   GET product/_search
   {
     "query": {
