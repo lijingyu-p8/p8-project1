@@ -3,14 +3,29 @@ package com.es.estest.client;
 import com.es.estest.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class ES_Client {
     public static void main(String[] args) {
@@ -34,7 +49,7 @@ public class ES_Client {
 //            e.printStackTrace();
 //        }
         try {
-            insertData(restHighLevelClient);
+            conditionSearch(restHighLevelClient);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -66,5 +81,85 @@ public class ES_Client {
         System.out.println("_index:" + response.getIndex());
         System.out.println("_id:" + response.getId());
         System.out.println("_result:" + response.getResult());
+    }
+
+    public static void updateData(RestHighLevelClient client) throws IOException {
+        // 修改文档 - 请求对象
+        UpdateRequest request = new UpdateRequest();
+        // 配置修改参数
+        request.index("user_index").id("0001");
+        // 设置请求体，对数据进行修改
+        request.doc(XContentType.JSON, "sex", "女");
+        // 客户端发送请求，获取响应对象
+        UpdateResponse response = client.update(request, RequestOptions.DEFAULT);
+        System.out.println("_index:" + response.getIndex());
+        System.out.println("_id:" + response.getId());
+        System.out.println("_result:" + response.getResult());
+    }
+
+    public static void queryData(RestHighLevelClient client) throws IOException {
+        //1.创建请求对象
+        GetRequest request = new GetRequest().index("user_index").id("0001");
+        //2.客户端发送请求，获取响应对象
+        GetResponse response = client.get(request, RequestOptions.DEFAULT);
+        //3.打印结果信息
+        System.out.println("_index:" + response.getIndex());
+        System.out.println("_type:" + response.getType());
+        System.out.println("_id:" + response.getId());
+        System.out.println("source:" + response.getSourceAsString());
+    }
+
+    public static void deleteData(RestHighLevelClient client) throws IOException {
+        DeleteRequest request = new DeleteRequest("user_index").id("0001");
+        DeleteResponse response = client.delete(request, RequestOptions.DEFAULT);
+        System.out.println(response.toString());
+    }
+
+    public static void bulkInsertData(RestHighLevelClient client) throws IOException {
+        //创建批量新增请求对象
+        BulkRequest request = new BulkRequest();
+        request.add(new IndexRequest().index("user_index").id("1001").source(XContentType.JSON, "name", "zhangsan"));
+        request.add(new IndexRequest().index("user_index").id("1002").source(XContentType.JSON, "name", "lisi"));
+        request.add(new IndexRequest().index("user_index").id("1003").source(XContentType.JSON, "name", "wangwu"));
+        //客户端发送请求，获取响应对象
+        BulkResponse responses = client.bulk(request, RequestOptions.DEFAULT);
+        //打印结果信息
+        System.out.println("took:" + responses.getTook());
+        System.out.println("items:" + responses.getItems());
+    }
+
+    public static void bulkDeleteData(RestHighLevelClient client) throws IOException {
+        BulkRequest bulkRequest = new BulkRequest();
+        bulkRequest.add(new DeleteRequest().index("user_index").id("1001"));
+        bulkRequest.add(new DeleteRequest().index("user_index").id("1002"));
+        bulkRequest.add(new DeleteRequest().index("user_index").id("1003"));
+        client.bulk(bulkRequest, RequestOptions.DEFAULT);
+    }
+
+    public static void conditionSearch(RestHighLevelClient client) throws IOException {
+        // 创建搜索请求对象
+        SearchRequest request = new SearchRequest();
+        request.indices("user_index");
+        // 构建查询的请求体
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        // 查询所有数据
+//        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        searchSourceBuilder.query(QueryBuilders.termQuery("name", "lining"));
+        searchSourceBuilder.from(0);
+        searchSourceBuilder.size(10);
+        request.source(searchSourceBuilder);
+        SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
+        // 输出查询基本信息
+        SearchHits searchHits = searchResponse.getHits();
+        System.out.println("took:" + searchResponse.getTook());
+        System.out.println("timeout:" + searchResponse.isTimedOut());
+        System.out.println("total:" + searchHits.getTotalHits());
+        System.out.println("MaxScore:" + searchHits.getMaxScore());
+        // 输出每条数据
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for (SearchHit hit : hits) {
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            System.out.println(sourceAsMap);
+        }
     }
 }
