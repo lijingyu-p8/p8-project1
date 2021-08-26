@@ -204,3 +204,81 @@ searchSourceBuilder.from(0);
 searchSourceBuilder.size(10);
 ```
 
+### 10、排序
+
+```java
+searchSourceBuilder.sort("age", SortOrder.DESC);
+```
+
+### 11、过滤字段
+
+```java
+String[] includes = new String[1];
+includes[0] = "sex";
+String[] excludes = new String[0];
+searchSourceBuilder.fetchSource(includes, excludes);
+```
+
+### 12、Bool 查询
+
+```java
+SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+// 必须包含
+boolQueryBuilder.must(QueryBuilders.termQuery("name", "lining"));
+boolQueryBuilder.must(QueryBuilders.termQuery("sex", "女"));
+// 一定不含
+boolQueryBuilder.mustNot(QueryBuilders.matchQuery("name", "zhangsan"));
+// 可能包含
+boolQueryBuilder.should(QueryBuilders.matchQuery("sex", "男"));
+searchSourceBuilder.query(boolQueryBuilder);
+```
+
+### 13、范围查询
+
+```java
+RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("age");
+// 大于等于
+rangeQuery.gte("30");
+// 小于等于
+rangeQuery.lte("40");
+```
+
+### 14、模糊查询
+
+```java
+FuzzyQueryBuilder fuzzyQueryBuilder = QueryBuilders.fuzzyQuery("name", "zangsan");
+fuzzyQueryBuilder.fuzziness(Fuzziness.AUTO);
+```
+
+### 15、高亮查询
+
+```java
+// 构建高亮字段
+HighlightBuilder highlightBuilder = new HighlightBuilder();
+highlightBuilder.preTags("<font color='red'>");//设置标签前缀
+highlightBuilder.postTags("</font>");//设置标签后缀
+highlightBuilder.field("name");//设置高亮字段
+// 设置高亮构建对象
+searchSourceBuilder.highlighter(highlightBuilder);
+```
+
+### 16、聚合查询
+
+```java
+SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+//构建聚合条件
+MaxAggregationBuilder maxAge = AggregationBuilders.max("maxAge");
+maxAge.field("age");
+sourceBuilder.aggregation(maxAge);
+```
+
+### 17、分组统计
+
+```java
+SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+TermsAggregationBuilder age_groupby = AggregationBuilders.terms("age_groupby");
+age_groupby.field("age");
+sourceBuilder.aggregation(age_groupby);
+```
+

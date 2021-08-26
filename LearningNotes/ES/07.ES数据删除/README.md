@@ -24,4 +24,3 @@ POST product/_delete_by_query
   }
 }
 ```
-

@@ -18,11 +18,19 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FuzzyQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 
 import java.io.IOException;
 import java.util.Map;
@@ -145,9 +153,39 @@ public class ES_Client {
         // 查询所有数据
 //        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         searchSourceBuilder.query(QueryBuilders.termQuery("name", "lining"));
-        searchSourceBuilder.from(0);
-        searchSourceBuilder.size(10);
+//        searchSourceBuilder.from(0);
+//        searchSourceBuilder.size(10);
+//        searchSourceBuilder.sort("age", SortOrder.DESC);
+//        String[] includes = new String[1];
+//        includes[0] = "sex";
+//        String[] excludes = new String[0];
+//        searchSourceBuilder.fetchSource(includes, excludes);
         request.source(searchSourceBuilder);
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.must(QueryBuilders.termQuery("name", "lining"));
+        boolQueryBuilder.must(QueryBuilders.termQuery("sex", "女"));
+        searchSourceBuilder.query(boolQueryBuilder);
+        RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery("range");
+        rangeQueryBuilder.gte(30);
+        rangeQueryBuilder.lte(20);
+        FuzzyQueryBuilder fuzzyQueryBuilder = QueryBuilders.fuzzyQuery("name", "zangsan");\
+        fuzzyQueryBuilder.fuzziness(Fuzziness.AUTO);
+        //构建高亮字段
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        highlightBuilder.preTags("<font color='red'>");//设置标签前缀
+        highlightBuilder.postTags("</font>");//设置标签后缀
+        highlightBuilder.field("name");//设置高亮字段
+        // 设置高亮构建对象
+        searchSourceBuilder.highlighter(highlightBuilder);
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        MaxAggregationBuilder maxAge = AggregationBuilders.max("maxAge");
+        maxAge.field("age");
+        sourceBuilder.aggregation(maxAge);
+        TermsAggregationBuilder age_groupby = AggregationBuilders.terms("age_groupby");
+        age_groupby.field("age");
+        sourceBuilder.aggregation(age_groupby);
+
         SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
         // 输出查询基本信息
         SearchHits searchHits = searchResponse.getHits();
