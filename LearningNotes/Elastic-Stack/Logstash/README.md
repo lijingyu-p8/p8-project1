@@ -146,37 +146,39 @@ echo "2021-08-28 21:21:21|ERROR|读取数据出错|参数：id=1002" >> log2.log
 我们可以修改我们的配置文件，将我们的日志记录输出到ElasticSearch中
 
 ```bash
+#默认的官方示例配置
+conf/logstash-sample.conf
+```
+
+```bash
 input {
-    file {
-        path => "/soft/beats/logs/app.log"
-        start_position => "beginning"
-    }
+  beats {
+    port => 5044 #默认开5044端口，用于beats上传数据
+  }
 }
-filter {
-    mutate {
-    	split => {"message"=>"|"}
-    }
-}
+
 output {
-	elasticsearch {
-		hosts => ["127.0.0.1:9200"]
-	}
+  elasticsearch {
+    hosts => ["http://192.168.73.90:9200"]
+    index => "logstash-test-%{+YYYY.MM.dd}" #自定义日志名称
+    #user => "elastic" #如果es需要用户名、秘密
+    #password => "changeme"
+  }
 }
 ```
 
 然后在重启我们的logstash
 
 ```bash
-./bin/logstash -f ./mogublog-pipeline.conf
+./bin/logstash -f ./logstash-sample.conf
 ```
 
-然后向日志记录中，插入两条数据
+![image-20210828211428126](images/连接es-1.png)
 
-```bash
-echo "2019-03-15 21:21:21|ERROR|读取数据出错|参数：id=1002" >> app.log
-echo "2019-03-15 21:21:21|ERROR|读取数据出错|参数：id=1002" >> app.log
-```
+beats读取Linux系统日志，发送到logstash
 
 最后就能够看到我们刚刚插入的数据了
 
-![image-20200924230314560](images/image-20200924230314560.png)
+![image-20210828211713375](images/输出到es-kibana-1.png)
+
+![image-20210828211815422](images/输出到es-kibana-2.png)

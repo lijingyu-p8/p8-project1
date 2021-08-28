@@ -270,7 +270,7 @@ filebeat.inputs:
 - type: log
   enabled: true
   paths:
-    - /soft/beats/logs/*.log
+    - /var/log/messages #Linux系统日志
   tags: ["web", "test"]
   fields:
     from: test-web
@@ -278,26 +278,42 @@ filebeat.inputs:
 setup.template.settings:
   index.number_of_shards: 1
 output.elasticsearch:
-  hosts: ["127.0.0.1:9200"]
+  hosts: ["192.168.73.90:9200"]
 ```
 
 启动成功后，我们就能看到它已经成功连接到了es了
 
-![image-20200924145624812](images/image-20200924145624812.png)
-
-然后我们到刚刚的 logs文件夹向 a.log文件中添加内容
-
-```bash
-echo "hello mogublog" >> a.log
-```
+![image-20210828195745000](images/filebeat连接es-.png)
 
 在ES中，我们可以看到，多出了一个 filebeat的索引库
 
-![image-20200924145928050](images/image-20200924145928050.png)
+![image-20210828195918297](images/filebeat-创建的索引-1.png)
 
 然后我们浏览对应的数据，看看是否有插入的数据内容
 
-![image-20200924150500441](images/image-20200924150500441.png)
+![image-20210828200040525](images/filebeat-索引数据-1.png)
+
+通过index配置，可以对索引重命名：
+
+```bash
+output.elasticsearch:
+  hosts: ["http://localhost:9200"]
+  index: "%{[fields.log_type]}-%{[agent.version]}-%{+yyyy.MM.dd}"
+```
+
+### 输出到Logstash
+
+修改配置，将output修改为logstash
+
+```bash
+output.logstash:
+  # The Logstash hosts
+  hosts: ["127.0.0.1:5044"]
+```
+
+![image-20210828212351121](images/filebeat-连接logstash-1.png)
+
+![image-20210828211621099](images/filebeat-logstash-1.png)
 
 ### Filebeat工作原理
 
@@ -325,6 +341,8 @@ Filebeat主要由下面几个组件组成： harvester、prospector 、input
 
 ### input
 
+#### input运行原理
+
 - 一个input负责管理harvester，并找到所有要读取的源。
 - 如果input类型是log，则input查找驱动器上与已定义的glob路径匹配的所有文件，并为每个文件启动一个harvester。
 
@@ -338,6 +356,51 @@ filebeat.inputs:
     - /var/log/*.log
     - /var/path2/*.log
 ```
+
+```http
+# 查看官网，可以了解到支持的输入类型
+https://www.elastic.co/guide/en/beats/filebeat/7.13/configuration-filebeat-options.html
+```
+
+![image-20210828192612549](images/filebeat-input.png)
+
+#### input多行匹配
+
+触发一条日志的生成代表一个事件，一般一个事件中的日志都是多行。在ES中应该被当作同一条数据进行存储，此时就需要进行多行匹配。
+
+一般日志都是如下多行的形式。
+
+```java
+[beat-logstash-some-name-832-2015.11.28] IndexNotFoundException[no such index]
+    at org.elasticsearch.cluster.metadata.IndexNameExpressionResolver$WildcardExpressionResolver.resolve(IndexNameExpressionResolver.java:566)
+    at org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.concreteIndices(IndexNameExpressionResolver.java:133)
+    at org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.concreteIndices(IndexNameExpressionResolver.java:77)
+    at org.elasticsearch.action.admin.indices.delete.TransportDeleteIndexAction.checkBlock(TransportDeleteIndexAction.java:75)
+```
+
+```bash
+#正则匹配
+multiline.type: pattern
+#匹配的正则表达式
+multiline.pattern: '^\['
+#true:匹配正则的是第一行。false：不匹配的是第一行
+multiline.negate: true
+#非第一行的内容，追加在第一行内容的位置，一般都为after，向后追加
+multiline.match: after
+```
+
+配置文件修改
+
+```bash
+#匹配日期 2021-08-28 22:01:39
+multiline.pattern: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} 
+multiline.negate: true
+multiline.match: after
+```
+
+![image-20210828221159033](images/multiline-多行配置-1.png)
+
+![image-20210828221858511](images/multiline-多行查询结果-1.png)
 
 ### 启动命令
 

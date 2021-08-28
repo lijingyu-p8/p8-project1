@@ -6,4 +6,4 @@ spring:
         predicates:        - Path=/mangodb/**
         - Method=POST,GET
         uri: lb://consumer-nacos
-        filters:        - StripPrefix=1          
+        filters:        - StripPrefix=1
