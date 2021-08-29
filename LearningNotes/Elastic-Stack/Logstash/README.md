@@ -4,7 +4,7 @@
 
 Logstash是一个开源的服务器端数据处理管道，能够同时从多个来源采集数据，转换数据，然后将数据发送到最喜欢的存储库中（我们的存储库当然是ElasticSearch）
 
-![image-20200924213006328](images/image-20200924213006328.png)
+![image-20210829105222260](images/介绍.png)
 
 我们回到我们ElasticStack的架构图，可以看到Logstash是充当数据处理的需求的，当我们的数据需要处理的时候，会将它发送到Logstash进行处理，否则直接送到ElasticSearch中。
 
@@ -14,7 +14,7 @@ Logstash是一个开源的服务器端数据处理管道，能够同时从多个
 
 Logstash可以处理各种各样的输入，也可以做格式转换、filter，处理完后发送到ElasticSearch。
 
-![image-20200924213350345](images/image-20200924213350345.png)
+![image-20210829110057944](images/介绍-1.png)
 
 ## 部署安装
 
@@ -70,22 +70,62 @@ stdout { ... } #标准输出
 ### 输入
 
 - 采集各种样式、大小和来源的数据，数据往往以各种各样的形式，或分散或集中地存在于很多系统中。
+
 - Logstash 支持各种输入选择 ，可以在同一时间从众多常用来源捕捉事件。能够以连续的流式传输方式，轻松地从日志、指标、Web 应用、数据存储以及各种 AWS 服务采集数据。
 
-![image-20200924221256569](images/image-20200924221256569.png)
+  ![image-20210829105107860](images/输入.png)
 
 ### 过滤
 
 - 实时解析和转换数据
+
+  ![image-20210829104746286](images/过滤.png)
+
 - 数据从源传输到存储库的过程中，Logstash 过滤器能够解析各个事件，识别已命名的字段以构建结构，并将它们转换成通用格式，以便更轻松、更快速地分析和实现商业价值。
 
-![image-20200924221459397](images/image-20200924221459397.png)
+- 支持的过滤插件
+
+  ```http
+  https://www.elastic.co/guide/en/logstash/7.13/filter-plugins.html
+  ```
+
+  ![image-20210829103532233](images/过滤插件-1.png)
+
+- grok插件示例
+
+  IP、WORD、NUMBER、均为内置的正则比配规则。
+
+  IP:client：匹配到ip内容，赋值给client字段。
+
+  ```bash
+  input {
+        stdin{}
+      }
+      filter {
+        grok {
+          match => { "message" => "%{IP:client} %{WORD:method} %{URIPATHPARAM:request} %{NUMBER:bytes} %{NUMBER:duration}" }
+        }
+      }
+  output {
+          stdout { codec => rubydebug }
+  }
+  ```
+
+- 输入测试数据
+
+  ```
+  55.3.244.1 GET /index.html 15824 0.043
+  ```
+
+  进行字段解析，并赋值到指定字段。
+
+  ![image-20210829104455008](images/grok-1.png)
 
 ### 输出
 
 Logstash提供众多输出选择，可以将数据发送到要指定的地方，并且能够灵活地解锁众多下游用例。
 
-![image-20200924221528089](images/image-20200924221528089.png)
+![image-20210829104912179](images/输出.png)
 
 ## 读取自定义日志
 
