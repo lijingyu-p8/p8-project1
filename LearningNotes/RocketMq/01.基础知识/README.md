@@ -364,7 +364,31 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 ##### 3.2.1、平均分配策略
 
+- queue比client多的情况下：
+
+  ![](images/平均分配-1.png)
+
+- queue比client少的情况下：
+
+  ![](images/平均分配-2.png)
+
+- 该算法是要根据avg = QueueCount / ConsumerCount 的计算结果进行分配的。如果能够整除，则按顺序将avg个Queue逐个分配Consumer；如果不能整除，则将多余出的Queue按照Consumer顺序逐个分配。
+
+- 该算法即，先计算好每个Consumer应该分得几个Queue，然后再依次将这些数量的Queue逐个分配个Consumer。
+
 ##### 3.2.2、环形平均策略
+
+- queue比client多的情况下：
+
+  ![](images/环形-1.png)
+
+- queue比client少的情况下：
+
+  ![](images/环形-2.png)
+
+- 环形平均算法是指，根据消费者的顺序，依次在由queue队列组成的环形图中逐个分配。
+
+- 当client多时，会存在不工作的client。
 
 ##### 3.2.3、一致性hash
 
