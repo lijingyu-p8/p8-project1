@@ -392,4 +392,78 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 ##### 3.2.3、一致性hash
 
+- ![image-20210830124003321](images/一致性hash-1.png)
+- 该算法会将consumer的hash值作为Node节点存放到hash环上，然后将queue的hash值也放到hash环上，通过顺时针方向，距离queue最近的那个consumer就是该queue要分配的consumer。
+- 该算法存在的问题：分配不均。
+- 优点：可以有效减少由于消费者组扩容或缩容所带来的大量的Rebalance。
+
 ##### 3.2.4、同机房策略
+
+- ![image-20210830124148045](images/同机房策略-1.png)
+- 该算法会根据queue的部署机房位置和consumer的位置，过滤出当前consumer相同机房的queue。然后按照平均分配策略或环形平均策略对同机房queue进行分配。如果没有同机房queue，则按照平均分配策略或环形平均策略对所有queue进行分配。
+
+### 4、offset管理
+
+消费进度offset是用来记录每个Queue的不同消费组的消费进度的。根据消费进度记录器的不同，可以分为两种模式：本地模式和远程模式。
+
+#### 4.1、offset的存储模式
+
+- offset本地管理模式
+
+  当消费模式为广播消费时，offset使用本地模式存储。因为每条消息会被所有的消费者消费，每个消费者管理自己的消费进度，各个消费者之间不存在消费进度的交集。
+  Consumer在广播消费模式下offset相关数据以json的形式持久化到Consumer本地磁盘文件中，默认文件路径为当前用户主目录下的
+
+  ```bash
+  .rocketmq_offsets/${clientId}/${group}/Offsets.json 。
+  ```
+
+  其中${clientId}为当前消费者id，默认为ip@DEFAULT；${group}为消费者组名称。
+
+- offset远程管理模式
+  当消费模式为集群消费时，offset使用远程模式管理。因为所有Cosnumer实例对消息采用的是均衡消费，所有Consumer共享Queue的消费进度。
+  Consumer在集群消费模式下offset相关数据以json的形式持久化到Broker磁盘文件中，文件路径为当前用户主目录下的
+
+  ```bash
+  store/config/consumerOffset.json
+  ```
+
+  Broker启动时会加载这个文件，并写入到一个双层Map（ConsumerOffsetManager）。外层map的key为topic@group，value为内层map。内层map的key为queueId，value为offset。当发生Rebalance时，新的Consumer会从该Map中获取到相应的数据来继续消费。
+
+  <font color="red">集群模式下offset采用远程管理模式，主要是为了保证Rebalance机制。</font>
+
+- offset用途
+
+  消费者是如何从最开始持续消费消息的？消费者要消费的第一条消息的起始位置是用户自己通过consumer.setConsumeFromWhere()方法指定的。
+
+  在Consumer启动后，其要消费的第一条消息的起始位置常用的有三种，这三种位置可以通过枚举类型常量设置。这个枚举类型为ConsumeFromWhere。
+
+  ```bash
+  #从queue的当前最后一条消息开始消费
+  ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET
+  #从queue的第一条消息开始消费
+  ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET
+  #从指定的具体时间戳位置的消息开始消费。这个具体时间戳是通过另外一个语句指定的。
+  ConsumeFromWhere.CONSUME_FROM_TIMESTAMP
+  #指定时间戳 yyyyMMddHHmmss
+  consumer.setConsumeTimestamp(“20210701080000”)
+  ```
+
+  当消费完一批消息后，Consumer会提交其消费进度offset给Broker，Broker在收到消费进度后会将其更新到那个双层Map（ConsumerOffsetManager）及consumerOffset.json文件中，然后向该Consumer进行ACK，而ACK内容中包含三项数据：
+
+  ```java
+  当前消费队列的最小offset（minOffset）
+  最大offset（maxOffset）
+  及下次消费的起始offset（nextBeginOffset）
+  ```
+
+#### 4.2、offset的提交模式
+
+集群消费模式下，Consumer消费完消息后会向Broker提交消费进度offset，其提交方式分为两种：
+
+- 同步提交：消费者在消费完一批消息后会向broker提交这些消息的offset，然后等待broker的成功响应。若在等待超时之前收到了成功响应，则继续读取下一批消息进行消费（从ACK中获取nextBeginOffset）。若没有收到响应，则会重新提交，直到获取到响应。而在这个等待过程中，消费者是阻塞的。其严重影响了消费者的吞吐量。
+- 异步提交：消费者在消费完一批消息后向broker提交offset，但无需等待Broker的成功响应，可以继续读取并消费下一批消息。这种方式增加了消费者的吞吐量。但需要注意，broker在收到提交的offset后，还是会向消费者进行响应的。可能还没有收到ACK，此时Consumer会从Broker中直接获取nextBeginOffset。
+
+#### 4.3、重试队列的offset存储
+
+- 当rocketMQ对消息的消费出现异常时，会将发生异常的消息的offset提交到Broker中的重试队列。系统在发生消息消费异常时会为当前的topic@group创建一个重试队列，该队列以%RETRY%开头，到达重试时间后进行消费重试。
+- ![image-20210831125140108](images/offset-重试存储.png)
