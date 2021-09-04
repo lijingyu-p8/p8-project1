@@ -50,6 +50,8 @@
 
   每次修改ZooKeeper状态都会产生一个ZooKeeper事务ID。事务ID是ZooKeeper中所有修改总的次序。每次修改都有唯一的zxid，如果zxid1小于zxid2，那么zxid1在zxid2之前发生。
 
+  czxid总共64位。前32位，代表leader的纪元，每换一次leader，就加1，代表是第几个leader。后32位代表增删改的事务id，每次的增删改操作，都会加1。
+
 - ctime：znode被创建的时间.
 
 - mzxid：znode最后更新的事务zxid。
@@ -89,6 +91,7 @@
      客户端与Zookeeper断开连接后，该节点被删除
   2. 临时顺序编号目录节点
      客户端与Zookeeper 断开连接后，该节点被删除，只是Zookeeper给该节点名称进行顺序编号。
+  3. 临时节点随着session的存在而存在，session断开，临时节点就会被删除。
 
 - 说明：
 
@@ -208,3 +211,31 @@
 ### 3、监听机制
 
 - 注册一次，只能监听一次。想再次监听，需要再次注册。
+
+## 数据写入流程
+
+### 1、写入请求发送到leader
+
+1. 客户端将写入请求发送到leader，leader将数据同步发送到其余节点。
+2. 当半数节点返回写入成功的响应，leader发起commit。提交数据。
+3. leader返回给客户端ack。
+
+### 2、写入请求发送到follower
+
+1. 客户端将写入请求发送到follower，follower将请求转发给leader。
+2. leader将数据同步发送到其余节点。
+3. 当半数节点返回写入成功的响应，leader发起commit。提交数据。
+4. leader将响应转发给follower，由follower给客户端返回ack。
+
+## 角色划分
+
+1. leader：决策者，只有leader能接收写操作，其他角色只能接收读操作。
+2. follower：追随者，追随者有权在主节点挂掉之后，参与投票，选举出新的leader。
+3. observer：观察者，只能提供读数据的请求，没有权利参与投票。
+
+- zk集群是读写分离的。observer的存在，可以放大查询能力，并且限制小数量的follower，可以提升快速恢复的能力，因为少量机器选举速度肯定比大量机器选举速度快。
+- server.1=node01:2888:3888:observer，只需要在最后加上observer，配置的既是观察者。
+
+## Paxos算法
+
+## zab协议
