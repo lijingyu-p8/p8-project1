@@ -93,9 +93,63 @@
   }
   ```
 
-### 2、顺序消息
+### 2、顺序消息--分区有序
+
+- 要保证消息有序，只能保证同一个queue队列内部消息有序，并且消费者应该用单线程进行指定queue内消息的消费。
+
+  ```java
+  public class Test {
+  	public static void main(String[] args) throws Exception {
+  		DefaultMQProducer producer = new DefaultMQProducer("pg");
+  		producer.setNamesrvAddr("rocketmqOS:9876");
+  		producer.start();
+  		for (int i = 0; i < 100; i++) {
+  			Integer orderId = i;
+  			byte[] body = ("Hi," + i).getBytes();
+  			Message msg = new Message("TopicA", "TagA", body);
+  			SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
+  				@Override
+  				public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {
+  					Integer id = (Integer) arg;
+  					int index = id % mqs.size();
+  					return mqs.get(index);
+  				}
+  			}, orderId);
+  			System.out.println(sendResult);
+  		}
+  		producer.shutdown();
+  	}
+  }
+  ```
 
 ### 3、延时消息
+
+```java
+public class Test {
+	public static void main(String[] args) throws Exception {
+		DefaultMQProducer producer = new DefaultMQProducer("pg");
+		producer.setNamesrvAddr("rocketmqOS:9876");
+		producer.start();
+		for (int i = 0; i < 10; i++) {
+			byte[] body = ("Hi," + i).getBytes();
+			Message msg = new Message("TopicB", "someTag", body);
+			// 指定消息延迟等级为3级，即延迟10s
+			msg.setDelayTimeLevel(3);
+			SendResult sendResult = producer.send(msg);
+			// 输出消息被发送的时间
+			System.out.print(new SimpleDateFormat("mm:ss").format(new Date()));
+			System.out.println(" ," + sendResult);
+		}
+		producer.shutdown();
+	}
+}
+```
+
+延迟时间的等级
+
+```properties
+messageDelayLevel = 1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h 1d
+```
 
 ### 4、事务消息
 
