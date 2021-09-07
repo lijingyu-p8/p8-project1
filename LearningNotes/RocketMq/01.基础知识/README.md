@@ -523,10 +523,17 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
   ![image-20210903125438987](images/顺序消息-3.png)
 
-- d
 
-### 3、延时消息
+### 3、分区有序
 
-### 4、事务消息
+- 如果有多个Queue参与，仅可保证在该Queue分区队列上的消息顺序，则称为分区有序。
 
-### 5、批量消息
+- 在定义Producer时可以指定消息队列选择器，实现Queue的选择。这个选择器是实现MessageQueueSelector接口自定义的。
+
+  在定义选择器的选择算法时，一般需要使用“select--key”。这个key可以是消息key也可以是其它数据。但无论谁做select--key，都不能重复，都是唯一的。一般性的选择算法是，让select--key（或其hash值）与该Topic所包含的Queue的数量取模，其结果即为选择出的Queue的QueueId。
+
+### 4、延时消息
+
+### 5、事务消息
+
+### 6、批量消息
