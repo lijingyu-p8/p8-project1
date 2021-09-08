@@ -534,6 +534,55 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 ### 4、延时消息
 
+- 当消息写入到Broker后，在指定的时长后才可被消费处理的消息，称为延时消息。
+
+- 延时消息的延迟时长不支持随意时长的延迟，是通过特定的延迟等级来指定的。延时等级定义在RocketMQ服务端的MessageStoreConfig类中的如下变量中：
+
+  ![image-20210908125158489](images/延时消息-1.png)
+
+  即，若指定的延时等级为3，则表示延迟时长为10s，即延迟等级是从1开始计数的。
+  当然，如果需要自定义的延时等级，可以通过在broker加载的配置中新增如下配置（例如下面增加了1天这个等级1d）。配置文件在RocketMQ安装目录下的conf目录中。
+
+  ```properties
+  messageDelayLevel = 1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h 1d
+  ```
+
+- 延时消息的原理
+
+  ![image-20210908125547753](images/延时消息-原理-1.png)
+
+  Producer将消息发送到Broker后，Broker会首先将消息写入到commitlog文件，然后需要将其分发到相应的consumequeue。不过，在分发之前，系统会先判断消息中是否带有延时等级。若没有，则直接正常分发；
+
+  若有则需要经历一个复杂的过程：
+
+  1. 修改消息的Topic为SCHEDULE_TOPIC_XXXX
+
+  2. 根据延时等级，在consumequeue目录中SCHEDULE_TOPIC_XXXX主题下创建出相应的queueId目录与consumequeue文件（如果没有这些目录与文件的话）。
+
+     - 延迟等级delayLevel与queueId的对应关系为queueId = delayLevel -1
+     - 需要注意，在创建queueId目录时，并不是一次性地将所有延迟等级对应的目录全部创建完毕，而是用到哪个延迟等级创建哪个目录。
+
+  3. 修改消息索引单元内容。
+
+     ![](images/延时消息-索引-1.png)
+
+     索引单元中的Message Tag HashCode部分原本存放的是消息的Tag的Hash值。现修改为消息的投递时间。投递时间是指该消息被重新修改为原Topic后再次被写入到commitlog中的时间。投递时间 = 消息存储时间 + 延时等级时间。消息存储时间指的是消息被发送到Broker时的时间戳。
+
+  4. 将消息索引写入到SCHEDULE_TOPIC_XXXX主题下相应的consumequeue中
+
+     - SCHEDULE_TOPIC_XXXX目录中各个延时等级Queue中的消息是如何排序的？
+     - 是按照消息投递时间排序的。一个Broker中同一等级的所有延时消息会被写入到consumequeue目录中SCHEDULE_TOPIC_XXXX目录下相同Queue中。即一个Queue中消息投递时间的延迟等级时间是相同的。那么投递时间就取决于于 消息存储时间了。即按照消息被发送到Broker的时间进行排序的。
+
+  5. 投递延时消息
+
+     - Broker内部有⼀个延迟消息服务类ScheuleMessageService，其会消费SCHEDULE_TOPIC_XXXX中的消息，即按照每条消息的投递时间，将延时消息投递到⽬标Topic中。不过，在投递之前会从commitlog中将原来写入的消息再次读出，并将其原来的延时等级设置为0，即原消息变为了一条不延迟的普通消息。然后再次将消息投递到目标Topic中。
+     - ScheuleMessageService在Broker启动时，会创建并启动一个定时器Timer，用于执行相应的定时任务。系统会根据延时等级的个数，定义相应数量的TimerTask，每个TimerTask负责一个延迟等级消息的消费与投递。每个TimerTask都会检测相应Queue队列的第一条消息是否到期。若第一条消息未到期，则后面的所有消息更不会到期（消息是按照投递时间排序的）；若第一条消息到期了，则将该消息投递到目标Topic，即消费该消息。
+
+  6. 将消息重新写入commitlog
+
+     延迟消息服务类ScheuleMessageService将延迟消息再次发送给了commitlog，并再次形成新的消息索引条目，分发到相应Queue。
+     这其实就是一次普通消息发送。只不过这次的消息Producer是延迟消息服务类ScheuleMessageService。
+
 ### 5、事务消息
 
 ### 6、批量消息
