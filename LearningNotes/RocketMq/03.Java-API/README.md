@@ -2,15 +2,16 @@
 
 ## 添加依赖
 
-```xml
-<dependencies>
-   <dependency>
-      <groupId>org.apache.rocketmq</groupId>
-      <artifactId>rocketmq-client</artifactId>
-      <version>4.8.0</version>
-   </dependency>
-</dependencies>
-```
+- ```xml
+  <dependencies>
+     <dependency>
+        <groupId>org.apache.rocketmq</groupId>
+        <artifactId>rocketmq-client</artifactId>
+        <version>4.8.0</version>
+     </dependency>
+  </dependencies>
+  ```
+
 
 ## 消息的发送
 
@@ -124,36 +125,167 @@
 
 ### 3、延时消息
 
-```java
-public class Test {
-	public static void main(String[] args) throws Exception {
-		DefaultMQProducer producer = new DefaultMQProducer("pg");
-		producer.setNamesrvAddr("rocketmqOS:9876");
-		producer.start();
-		for (int i = 0; i < 10; i++) {
-			byte[] body = ("Hi," + i).getBytes();
-			Message msg = new Message("TopicB", "someTag", body);
-			// 指定消息延迟等级为3级，即延迟10s
-			msg.setDelayTimeLevel(3);
-			SendResult sendResult = producer.send(msg);
-			// 输出消息被发送的时间
-			System.out.print(new SimpleDateFormat("mm:ss").format(new Date()));
-			System.out.println(" ," + sendResult);
-		}
-		producer.shutdown();
-	}
-}
-```
+- ```java
+  public class Test {
+  	public static void main(String[] args) throws Exception {
+  		DefaultMQProducer producer = new DefaultMQProducer("pg");
+  		producer.setNamesrvAddr("rocketmqOS:9876");
+  		producer.start();
+  		for (int i = 0; i < 10; i++) {
+  			byte[] body = ("Hi," + i).getBytes();
+  			Message msg = new Message("TopicB", "someTag", body);
+  			// 指定消息延迟等级为3级，即延迟10s
+  			msg.setDelayTimeLevel(3);
+  			SendResult sendResult = producer.send(msg);
+  			// 输出消息被发送的时间
+  			System.out.print(new SimpleDateFormat("mm:ss").format(new Date()));
+  			System.out.println(" ," + sendResult);
+  		}
+  		producer.shutdown();
+  	}
+  }
+  ```
+
 
 延迟时间的等级
 
-```properties
-messageDelayLevel = 1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h 1d
-```
+- ```properties
+  messageDelayLevel = 1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h 1d
+  ```
+
 
 ### 4、事务消息
 
+#### 4.1、定义事务监听器
+
+- ```java
+  public class MyTransactionListener implements TransactionListener {
+  	// 回调操作方法
+  	// 消息预提交成功就会触发该方法的执行，用于完成本地事务
+  	@Override
+  	public LocalTransactionState executeLocalTransaction(Message msg, Object arg) {
+  		System.out.println("预提交消息成功：" + msg);
+  		// 假设接收到TAGA的消息就表示扣款操作成功，TAGB的消息表示扣款失败，
+  		// TAGC表示扣款结果不清楚，需要执行消息回查
+  		if (StringUtils.equals("TAGA", msg.getTags())) {
+  			return LocalTransactionState.COMMIT_MESSAGE;
+  		} else if (StringUtils.equals("TAGB", msg.getTags())) {
+  			return LocalTransactionState.ROLLBACK_MESSAGE;
+  		} else if (StringUtils.equals("TAGC", msg.getTags())) {
+  			return LocalTransactionState.UNKNOW;
+  		}
+  		return LocalTransactionState.UNKNOW;
+  	}
+  
+  	// 消息回查方法
+  	// 引发消息回查的原因最常见的有两个：
+  	// 1)回调操作返回UNKNWON
+  	// 2)TC没有接收到TM的最终全局事务确认指令
+  	@Override
+  	public LocalTransactionState checkLocalTransaction(MessageExt msg) {
+  		System.out.println("执行消息回查" + msg.getTags());
+  		return LocalTransactionState.COMMIT_MESSAGE;
+  	}
+  }
+  ```
+
+#### 4.2、定义生产者
+
+- ```java
+  public class test {
+  	public static void main(String[] args) throws Exception {
+  		TransactionMQProducer producer = new TransactionMQProducer("tpg");
+  		producer.setNamesrvAddr("rocketmqOS:9876");
+  		/**
+  		 * 定义一个线程池
+  		 * 
+  		 * @param corePoolSize    线程池中核心线程数量
+  		 * @param maximumPoolSize 线程池中最多线程数
+  		 * @param keepAliveTime   这是一个时间。当线程池中线程数量大于核心线程数量 是，* 多余空闲线程的存活时长
+  		 * @param unit            时间单位
+  		 * @param workQueue       临时存放任务的队列，其参数就是队列的长度
+  		 * @param threadFactory   线程工厂
+  		 */
+  		ExecutorService executorService = new ThreadPoolExecutor(2, 5, 100, TimeUnit.SECONDS,
+  				new ArrayBlockingQueue<Runnable>(2000), new ThreadFactory() {
+  					@Override
+  					public Thread newThread(Runnable r) {
+  						Thread thread = new Thread(r);
+  						thread.setName("client-transaction-msg-check-thread");
+  						return thread;
+  					}
+  				});
+  		// 为生产者指定一个线程池
+  		producer.setExecutorService(executorService);
+  		// 为生产者添加事务监听器
+  		producer.setTransactionListener(new MyTransactionListener());
+  		producer.start();
+  		String[] tags = { "TAGA", "TAGB", "TAGC" };
+  		for (int i = 0; i < 3; i++) {
+  			byte[] body = ("Hi," + i).getBytes();
+  			Message msg = new Message("TTopic", tags[i], body);
+  			// 发送事务消息
+  			// 第二个参数用于指定在执行本地事务时要使用的业务参数
+  			SendResult sendResult = producer.sendMessageInTransaction(msg, null);
+  			System.out.println("发送结果为：" + sendResult.getSendStatus());
+  		}
+  	}
+  
+  }
+  ```
+
 ### 5、批量消息
+
+### 6、消息过滤by sql
+
+- 定义producer
+
+  ```java
+  public class test {
+  	public static void main(String[] args) throws Exception {
+  		DefaultMQProducer producer = new DefaultMQProducer("pg");
+  		producer.setNamesrvAddr("rocketmqOS:9876");
+  		producer.start();
+  		for (int i = 0; i < 10; i++) {
+  			try {
+  				byte[] body = ("Hi," + i).getBytes();
+  				Message msg = new Message("myTopic", "myTag", body);
+  				msg.putUserProperty("age", i + "");
+  				SendResult sendResult = producer.send(msg);
+  				System.out.println(sendResult);
+  			} catch (Exception e) {
+  				e.printStackTrace();
+  			}
+  		}
+  		producer.shutdown();
+  	}
+  }
+  ```
+
+- 定义consumer
+
+  ```java
+  public class test {
+  	public static void main(String[] args) throws Exception {
+  		DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("pg");
+  		consumer.setNamesrvAddr("rocketmqOS:9876");
+  		consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
+          //只有push模式才能使用sql过滤
+  		consumer.subscribe("myTopic", MessageSelector.bySql("age between 0 and 6"));
+  		consumer.registerMessageListener(new MessageListenerConcurrently() {
+  			@Override
+  			public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs, ConsumeConcurrentlyContext context) {
+  				for (MessageExt me : msgs) {
+  					System.out.println(me);
+  				}
+  				return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+  			}
+  		});
+  		consumer.start();
+  		System.out.println("Consumer Started");
+  	}
+  }
+  ```
 
 ## 消息的消费
 
