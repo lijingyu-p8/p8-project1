@@ -7,17 +7,19 @@
 ### 1、Broker
 
 - Broker面向producer和consumer接收和发送消息。
+
   1. 向nameserver提交自己的信息。
   2. 是消息中间件的消息存储、转发服务器。
   3. 每个Broker节点，在启动时，都会遍历NameServer列表，与每个NameServer建立长连接，注册自己的信息，之后定时上报。
-  
+
 - 集群broker
+
   1. Broker高可用，可以配成Master/Slave结构，Master可写可读，Slave只可以读，Master将写入的数据同步给Slave。一个Master可以对应多个Slave，但是一个Slave只能对应一个Master。Master与Slave的对应关系通过指定相同的BrokerName，不同的BrokerId来定义。
   2. BrokerId为0表示Master，非0表示Slave。
   3. Master多机负载，可以部署多个broker，每个Broker与nameserver集群中的所有节点建立长连接，定时注册Topic信息到所有nameserver。
-  
+
   ![image-20210818125211119](images/broker-cluster-1.png)
-  
+
 - Broker功能模块划分：
 
   ![image-20210818124848865](images/broker-1.png)
@@ -109,7 +111,7 @@
 - Topic属于逻辑上的概念，实际上在Broker中是以queue队列的形式进行存储的。一个topic可以对应多个队列。并且可以在创建topic时进行队列数的指定。
 
   ![](images/topic-1.jpeg)
-  
+
 - 手动创建Topic时，有两种模式：
 
   1. 集群模式：该模式下创建的Topic在该集群中，所有Broker中的Queue数量是相同的。
@@ -585,4 +587,114 @@ Producer发送数据到Broker，数据会被记录到commitLog里，并且会更
 
 ### 5、事务消息
 
+#### 5.1、事务消息原理
+
+- RocketMQ提供了类似X/Open XA的分布式事务功能，通过事务消息能达到分布式事务的最终一致。XA是一种分布式事务解决方案，一种分布式事务处理模式。
+
+- RocketMQ使用两阶段提交。
+
+  1. producer产生消息之后，产生事务，此时将消息发送给broker。写入broker的HF半消息队列。消息的状态是不可用的，消费者也是不可见。写入到HF队列之后，会刷到磁盘中，此时broker给producer发送确认消息。
+  2. producer收到确认消息之后，代表HFM消息发送成功，此时可以开启本地真正的事务。一系列操作成功之后，再给broker发送成功确认的消息，HFM消息变成可用状态，消费端可以进行消费。
+  3. 如果本地事务执行时间比较久，broker会开启一个定时任务，定时向producer发送消息，确认程序是执行失败了，还是就是执行时间比较久。此时producer会有一个回调方法，可以手动编码返回给定时任务程序执行的状况。如果定时任务一直拿不到结果，这条半消息就会被废弃了。
+  4. 如果本地事务执行失败，会在回调方法内向broker发送消息状态。HF队列中的消息会写到磁盘中进行保存，定时任务会定时进行清除。
+
+- 描述本地事务执行状态
+
+  ```java
+  public enum LocalTransactionState {
+      COMMIT_MESSAGE, // 本地事务执行成功
+      ROLLBACK_MESSAGE, // 本地事务执行失败
+      UNKNOW, // 不确定，表示需要进行回查以确定本地事务的执行结果
+  }
+  ```
+
+- RocketMQ中的消息回查设置
+
+  关于消息回查，有三个常见的属性设置。它们都在broker加载的配置文件中设置
+
+  1. transactionTimeout=20，指定TM在20秒内应将最终确认状态发送给TC，否则引发消息回查。默认为60秒。
+  2. transactionCheckMax=5，指定最多回查5次，超过后将丢弃消息并记录错误日志。默认15次。
+  3. transactionCheckInterval=10，指定设置的多次消息回查的时间间隔为10秒。默认为60秒。
+
+- Half Message
+
+  预处理消息，当broker收到此类消息后，会存储到RMQ_SYS_TRANS_HALF_TOPIC的消息消费队列中
+
+- 检查事务状态：Broker会开启一个定时任务，消费RMQ_SYS_TRANS_HALF_TOPIC队列中的消息，每次执行任务会向消息发送者确认事务执行状态（提交、回滚、未知），如果是未知，等待下一次回调。
+
+- 超时：如果超过回查次数，默认回滚消息
+
+#### 5.2、使用限制
+
+- 事务消息不支持延时消息和批量消息。
+- 为了避免单个消息被检查太多次而导致半队列消息累积，默认将单个消息的检查次数限制为 15 次，但是用户可以通过 Broker 配置文件的 transactionCheckMax参数来修改此限制。如果已经检查某条消息超过 N 次的话（ N = transactionCheckMax ） 则 Broker 将丢弃此消息，并在默认情况下同时打印错误日志。可以通过重写 AbstractTransactionCheckListener 类来修改这个行为。
+- 事务消息将在 Broker 配置文件中的参数 transactionMsgTimeout 这样的特定时间长度之后被检查。当发送事务消息时，用户还可以通过设置用户属性 CHECK_IMMUNITY_TIME_IN_SECONDS 来改变这个限制，该参数优先于 transactionMsgTimeout 参数。
+- 事务性消息可能不止一次被检查或消费，对于事务消息要做好幂等性检查。
+- 提交给用户的目标主题消息可能会失败。它的高可用性通过 RocketMQ 本身的高可用性机制来保证，如果希望确保事务消息不丢失、并且事务完整性得到保证，建议使用同步的双重写入机制。
+- 事务消息的生产者 ID 不能与其他类型消息的生产者 ID 共享。与其他类型的消息不同，事务消息允许反向查询、MQ服务器能通过它们的生产者 ID 查询到消费者。
+
 ### 6、批量消息
+
+#### 6.1、批量发送
+
+- 生产者进行消息发送时可以一次发送多条消息，这可以大大提升Producer的发送效率。不过需要注意以下几点：
+
+  - 批量发送的消息必须具有相同的Topic
+  - 批量发送的消息必须具有相同的刷盘策略
+  - 批量发送的消息不能是延时消息与事务消息
+
+- 默认情况下，一批发送的消息总大小不能超过4MB字节。如果想超出该值，有两种解决方案：
+
+  - 方案一：将批量消息进行拆分，拆分为若干不大于4M的消息集合分多次批量发送
+  - 方案二：在Producer端与Broker端修改属性
+  - Producer端需要在发送之前设置Producer的maxMessageSize属性
+  - Broker端需要修改其加载的配置文件中的maxMessageSize属性
+
+- 生产者发送的消息大小
+
+  ![](images/批量发送消息-1.png)
+
+  生产者通过send()方法发送的Message，并不是直接将Message序列化后发送到网络上的，而是通过这个Message生成了一个字符串发送出去的。这个字符串由四部分构成：Topic、消息Body、消息日志（占20字节），及用于描述消息的一堆属性key-value。这些属性中包含例如生产者地址、生产时间、要发送的QueueId等。最终写入到Broker中消息单元中的数据都是来自于这些属性。
+
+#### 6.2、批量消费
+
+- Consumer的MessageListenerConcurrently监听接口的consumeMessage()方法的第一个参数为消息列表，但默认情况下每次只能消费一条消息。若要使其一次可以消费多条消息，则可以通过修改Consumer的consumeMessageBatchMaxSize属性来指定。不过，该值不能超过32。因为默认情况下消费者每次可以拉取的消息最多是32条。若要修改一次拉取的最大值，则可通过修改Consumer的pullBatchSize属性来指定。
+- 存在的问题
+  1. pullBatchSize值设置的越大，Consumer每拉取一次需要的时间就会越长，且在网络上传输出现问题的可能性就越高。若在拉取过程中若出现了问题，那么本批次所有消息都需要全部重新拉取。
+  2. consumeMessageBatchMaxSize值设置的越大，Consumer的消息并发消费能力越低，且这批被消费的消息具有相同的消费结果。因为consumeMessageBatchMaxSize指定的一批消息只会使用一个线程进行处理，且在处理过程中只要有一个消息处理异常，则这批消息需要全部重新再次消费处理。
+
+### 7、消息过滤
+
+对于指定Topic消息的过滤有两种过滤方式：Tag过滤与SQL过滤。
+
+- Tag过滤
+  通过consumer的subscribe()方法指定要订阅消息的Tag。如果订阅多个Tag的消息，Tag间使用或运算符(双竖线||)连接。
+  
+  ```java
+  DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("CID_EXAMPLE");
+  consumer.subscribe("TOPIC", "TAGA || TAGB || TAGC");
+  ```
+  
+- SQL过滤
+  SQL过滤是一种通过特定表达式对事先埋入到消息中的用户属性进行筛选过滤的方式。通过SQL过滤，可以实现对消息的复杂过滤。不过，只有使用PUSH模式的消费者才能使用SQL过滤。SQL过滤表达式中支持多种常量类型与运算符。
+  支持的常量类型：
+
+  - 数值：比如：123，3.1415
+  - 字符：必须用单引号包裹起来，比如：'abc'
+  - 布尔：TRUE 或 FALSE
+  - NULL：特殊的常量，表示空
+
+  支持的运算符有：
+
+  - 数值比较：>，>=，<，<=，BETWEEN，=
+  - 字符比较：=，<>，IN
+  - 逻辑运算 ：AND，OR，NOTNULL
+  - 判断：IS NULL 或者 IS NOT NULL
+
+- 默认情况下Broker没有开启消息的SQL过滤功能，需要在Broker加载的配置文件中添加如下属性，以开启该功能
+
+  ```properties
+  enablePropertyFilter = true
+  ```
+
+  
