@@ -21,6 +21,10 @@ broker.id=0
 log.dirs=/usr/local/soft/kafka/logs
 #配置连接 Zookeeper 集群地址
 zookeeper.connect=192.168.73.101:2181,192.168.73.102:2181,192.168.73.103:2181
+host.name=192.168.73.101
+listeners=PLAINTEXT://192.168.73.101:9092
+advertised.listeners=PLAINTEXT://192.168.73.101:9092
+
 #8.配置环境变量
 vim /etc/profile
 #增加配置
@@ -29,7 +33,8 @@ export PATH=:$PATH:${KAFKA_HOME}
 #9.启动集群
 ./bin/kafka-server-start.sh  ./config/server.properties
 #10.检验启动是否成功
-./bin/kafka-topics.sh bootstrap-server 192.168.73.101:9092 --list #查看topics
+./bin/kafka-topics.sh --zookeeper 192.168.73.102:2181 --list #查看topics
+./bin/kafka-topics.sh --bootstrap-server 192.168.73.102:9092,192.168.73.101:9092,192.168.73.103:9092 --list
 ```
 
 - etc-profile
@@ -39,4 +44,69 @@ export PATH=:$PATH:${KAFKA_HOME}
 - 启动成功
 
   ![](images/启动成功-1.png)
+
+# 常用命令行
+
+```bash
+#创建topic
+./bin/kafka-topics.sh --zookeeper 192.168.73.102:2181 --create --replication-factor 2 --partitions 3 --topic first-topic
+#选项说明：
+--topic 定义 topic 名
+--replication-factor 定义副本数
+--partitions 定义分区数
+#删除topic，需要server.properties中设置 delete.topic.enable=true 否则只是标记删除
+./bin/kafka-topics.sh --zookeeper 192.168.73.102:2181 --delete --topic first_topic
+#消费消息
+./bin/kafka-console-consumer.sh --bootstrap-server 192.168.73.102:9092 --topic first-topic --group g1
+#生产消息
+./bin/kafka-console-producer.sh --broker-list 192.168.73.102:9092 --topic first-topic
+#查看topic详细信息
+./bin/kafka-topics.sh --bootstrap-server 192.168.73.101:9092 --describe --topic first-topic
+#修改分区数
+./bin/kafka-topics.sh --bootstrap-server 192.168.73.101:9092 --alter --topic first-topic --partitions 6
+```
+
+- topic详情
+
+  first-topic三个分区partition
+
+  partition分区0的leader是1号节点，1、2号节点是副本，isr是1、2。
+
+  partition分区1的leader是2号节点，2、3号节点是副本，isr是2、3。
+
+  partition分区2的leader是2号节点，3、1号节点是副本，isr是3、1。
+
+  ![](images/topic详情-1.png)
+
+# 相关详细配置
+
+```properties
+#broker的全局唯一编号，不能重复
+broker.id=0
+#删除topic功能。为false则仅标记清除
+delete.topic.enable=true
+#处理网络请求的线程数量
+num.network.threads=3
+#用来处理磁盘 IO 的现成数量
+num.io.threads=8
+#发送套接字的缓冲区大小
+socket.send.buffer.bytes=102400
+#接收套接字的缓冲区大小
+socket.receive.buffer.bytes=102400
+#请求套接字的缓冲区大小
+socket.request.max.bytes=104857600
+#kafka 运行日志存放的路径
+log.dirs=/opt/module/kafka/logs
+#topic 在当前 broker 上的分区个数
+num.partitions=1
+#用来恢复和清理 data 下数据的线程数量
+num.recovery.threads.per.data.dir=1
+#segment 文件保留的最长时间，超时将被删除
+log.retention.hours=168
+#配置连接 Zookeeper 集群地址
+zookeeper.connect=ip:2181,ip:2181,ip:2181
+host.name=192.168.73.101
+listeners=PLAINTEXT://192.168.73.101:9092
+advertised.listeners=PLAINTEXT://192.168.73.101:9092
+```
 
