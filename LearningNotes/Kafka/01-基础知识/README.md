@@ -34,14 +34,19 @@
 - Producer ： 消息生产者，就是向 kafka broker 发消息的客户端。
 - Consumer ： 消息消费者，从kafka broker 取消息的客户端。
 - Consumer Group （CG）： 消费者组，由多个 consumer 组成。 消费者组内每个消费者负责消费不同分区的数据，一个分区只能由一个组内消费者消费。消费者组之间互不影响。 所有的消费者都属于某个消费者组，即消费者组是逻辑上的一个订阅者。
-- Broker ： 一台 kafka 服务器就是一个 broker。一个集群由多个 broker 组成。一个 broker可以容纳多个topic。
+- Broker ： 一台 kafka 服务器就是一个 broker。一个集群由多个 broker 组成。一个 broker可以容纳多个topic。broker是无状态（Sateless）的，它们是通过ZooKeeper来维护集群状态。
 - Topic ： 可以理解为一个主题， 生产者和消费者面向的都是一个 topic；
 - Partition： 分区。为了实现扩展性，一个非常大的 topic 可以分布到多个 broker（即服务器）上，一个 topic 可以分为多个 partition，每个 partition 是一个有序的队列。
 - Replica： 副本，为保证当集群中的某个节点发生故障时， 该节点上的 partition 数据不丢失，且 kafka 仍然能够继续工作， kafka 提供了副本机制，一个 topic 的每个分区都有若干个副本，一个 leader 和若干个 follower。
 - leader： 每个分区多个副本的“主”，生产者发送数据的对象，以及消费者消费数据的对象都是 leader。
 - follower： 每个分区多个副本中的“从”，实时从 leader 中同步数据，保持和 leader 数据的同步。 leader 发生故障时，某个 follower 会成为新的 follower。
 
-### 1.2、Topic
+### 1.2、zookeeper作用
+
+1. ZK用来管理和协调broker，并且存储了Kafka的元数据（例如：有多少topic、partition、consumer）
+2. ZK服务用于通知生产者和消费者Kafka集群中有新的broker加入、或者Kafka集群中出现故障的broker。
+
+### 1.3、Topic
 
 - Kafka 中消息是以 topic 进行分类的， 生产者生产消息，消费者消费消息，都是面向 topic的。topic 是逻辑上的概念，而partition是物理上的概念.
 
@@ -51,7 +56,7 @@
 
   ![](images/topic-1.png)
 
-### 1.3、文件存储机制
+### 1.4、文件存储机制
 
 - 由于生产者生产的消息会不断追加到log文件末尾，为防止log文件过大导致数据定位效率低下， Kafka 采取了分片和索引机制，将每个 partition 分为多个 segment。 每个 segment对应三个文件——“.index”文件、“.log”文件、“.timeindex”文件。 这些文件位于一个文件夹下， 该文件夹的命名规则为：topic 名称+分区序号。例如， first 这个 topic 有三个分区，则其对应的文件夹为 first-0，first-1，first-2。
 
@@ -108,9 +113,33 @@ Kafka过半同步成功，即代表数据落盘持久化成功，leader就会返
 ![](images/水位线-1.png)
 
 - LEO：指的是每个副本最大的 offset。
+
 - HW(高水位)：指的是消费者能见到的最大的 offset， ISR 队列中最小的 LEO。
   1. follower 故障
      follower 发生故障后会被临时踢出 ISR，待该 follower 恢复后， follower 会读取本地磁盘记录的上次的 HW，因为高水位下的数据，才被认为是已提交的数据，所以将 log 文件高于 HW 的部分截取掉，从 HW 开始向 leader 进行同步。等该 follower 的 LEO 大于等于该 Partition 的 HW，即 follower 追上 leader 之后，就可以重新加入 ISR 了。
   2. leader 故障
      leader 发生故障之后，会从 ISR 中选出一个新的 leader，之后，为保证多个副本之间的数据一致性， 其余的 follower 会先将各自的 log 文件高于 HW 的部分截掉，然后从新的 leader同步数据。
      注意： 这只能保证副本之间的数据一致性，并不能保证数据不丢失或者不重复。
+  
+- Exactly Once 语义
+
+  AtLeast Once 语义：将服务器的 ACK 级别设置为-1，可以保证 Producer 到 Server 之间不会丢失数据 。
+
+  At Most Once 语义：将服务器 ACK 级别设置为 0，可以保证生产者每条消息只会被发送一次。
+
+  At Least Once 可以保证数据不丢失，但是不能保证数据不重复；相对的， At Most Once 可以保证数据不重复，但是不能保证数据不丢失。 但是，对于一些非常重要的信息，比如说交易数据，下游数据消费者要求数据既不重复也不丢失，即 Exactly Once 语义。
+
+  Kafka引入了一项重大特性：幂等性。所谓的幂等性就是指 Producer 不论向 Server 发送多少次重复数据， Server 端都只会持久化一条。幂等性结合 At Least Once 语义，就构成了 Kafka 的 Exactly Once 语义。即：
+                                                 At Least Once + 幂等性 = Exactly Once
+
+  要启用幂等性，只需要将 Producer 的参数中 enable.idompotence 设置为 true 即可。 Kafka的幂等性实现其实就是将原来下游需要做的去重放在了数据上游。
+
+  开启幂等性的 Producer 在初始化的时候会被分配一个 PID，发往同一 Partition 的消息会附带 Sequence Number。而Broker 端会对<PID, Partition, SeqNumber>做缓存，当具有相同主键的消息提交时， Broker 只会持久化一条。但是 PID 重启就会变化，同时不同的 Partition 也具有不同主键，所以幂等性无法保证跨分区跨会话的 Exactly Once。
+
+## 四、消费者
+
+### 4.1、消费数据方式
+
+- consumer 采用 pull（拉） 模式从 broker 中读取数据。
+- push（推）模式很难适应消费速率不同的消费者，因为消息发送速率是由 broker 决定的。它的目标是尽可能以最快速度传递消息，但是这样很容易造成 consumer 来不及处理消息，典型的表现就是拒绝服务以及网络拥塞。而 pull 模式则可以根据 consumer 的消费能力以适当的速率消费消息。
+- pull 模式不足之处是，如果 kafka 没有数据，消费者可能会陷入循环中， 一直返回空数据。 针对这一点， Kafka 的消费者在消费数据时会传入一个时长参数 timeout，如果当前没有数据可供消费， consumer 会等待一段时间之后再返回，这段时长即为 timeout。
