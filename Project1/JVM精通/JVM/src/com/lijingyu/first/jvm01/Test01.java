@@ -1,4 +1,4 @@
-package com.lijingyu.jvm01;
+package com.lijingyu.first.jvm01;
 //sublime²é¿´byte×Ö½ÚÂë
 public class Test01 {
 
