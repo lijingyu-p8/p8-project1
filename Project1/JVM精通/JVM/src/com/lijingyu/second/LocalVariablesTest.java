@@ -22,7 +22,17 @@ public class LocalVariablesTest {
         int c = a + b;
         return c;
     }
+
+    public static int test4() {
+        int a = 1;
+        test3();
+        return a;
+    }
 }
+
+
+
+
 
 
 
