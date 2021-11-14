@@ -17,5 +17,6 @@
         <module>guli-admin</module>
         <module>renren-generator</module>
         <module>guli-common</module>
+        <module>guli-gateway</module>
     </modules>
 </project>

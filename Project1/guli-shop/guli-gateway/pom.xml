@@ -8,39 +8,25 @@
         <version>2.4.12</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.study.guli.member</groupId>
-    <artifactId>guli-member</artifactId>
+    <groupId>com.study.guli</groupId>
+    <artifactId>guli-gateway</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>guli-member</name>
-    <description>guli-member</description>
+    <name>guli-gateway</name>
+    <description>guli-gateway</description>
     <properties>
         <java.version>11</java.version>
         <spring-cloud.version>2020.0.4</spring-cloud.version>
     </properties>
     <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.study.guli.shop</groupId>
-            <artifactId>guli-common</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.study.guli.shop</groupId>
-            <artifactId>guli-common</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
     <dependencyManagement>
