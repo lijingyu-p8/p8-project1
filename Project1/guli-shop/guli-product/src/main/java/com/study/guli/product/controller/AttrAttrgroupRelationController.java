@@ -4,11 +4,8 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.*;
 
 import com.study.guli.product.entity.AttrAttrgroupRelationEntity;
 import com.study.guli.product.service.AttrAttrgroupRelationService;
@@ -27,6 +24,10 @@ import com.study.common.utils.R;
 @RestController
 @RequestMapping("product/attrattrgrouprelation")
 public class AttrAttrgroupRelationController {
+
+    @Value("${my.tt}")
+    private String tt;
+
     @Autowired
     private AttrAttrgroupRelationService attrAttrgroupRelationService;
 
@@ -79,6 +80,11 @@ public class AttrAttrgroupRelationController {
 		attrAttrgroupRelationService.removeByIds(Arrays.asList(ids));
 
         return R.ok();
+    }
+
+    @GetMapping("/tt")
+    public String getTt(){
+        return tt;
     }
 
 }
