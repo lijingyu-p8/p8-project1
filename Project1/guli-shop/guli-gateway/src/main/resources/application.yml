@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: guli-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 180.76.229.235:8848
+    gateway:
+      routes:
+        - id: route-admin
+          uri: lb://guli-admin
+          predicates:
+            - Path=/api/**
+          filters:
+            - RewritePath=/api/(?<segment>.*),/guli-admin/$\{segment}
+server:
+  port: 88
