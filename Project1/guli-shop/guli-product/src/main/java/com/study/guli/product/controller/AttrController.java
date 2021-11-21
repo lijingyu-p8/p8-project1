@@ -4,17 +4,15 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 import com.study.guli.product.entity.AttrEntity;
 import com.study.guli.product.service.AttrService;
 import com.study.common.utils.PageUtils;
 import com.study.common.utils.R;
 
+import javax.validation.Valid;
 
 
 /**
@@ -55,7 +53,7 @@ public class AttrController {
      * 保存
      */
     @RequestMapping("/save")
-    public R save(@RequestBody AttrEntity attr){
+    public R save(@Validated(CrossOrigin.class) @RequestBody AttrEntity attr){
 		attrService.save(attr);
 
         return R.ok();
