@@ -1,8 +1,0 @@
-spring:
-  cloud:
-    nacos:
-      server-addr: 192.168.73.1:8848
-  application:
-    name: provider-nacos
-server:
-  port: 5001
