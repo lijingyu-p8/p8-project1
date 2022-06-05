@@ -289,7 +289,7 @@ PUT product(索引name)
 
   ES是使用JSON分析器进行字段类型检测的，JSON没有隐式转换，所以会对字段设置一个比较宽的字段类型，integer的会设置为long
 
-- type核心类型
+- type核心类型（字段类型）
 
   1. 数字类型
 
@@ -325,6 +325,8 @@ PUT product(索引name)
 
      date类型属于exact value。不会被分词。
 
+     [`date`](https://www.elastic.co/guide/en/elasticsearch/reference/7.10/date.html)和 [`date_nanos`](https://www.elastic.co/guide/en/elasticsearch/reference/7.10/date_nanos.html)
+
   4. 布尔类型
 
   5. binary（二进制）
@@ -343,7 +345,7 @@ PUT product(索引name)
 
      用于多个json数组。
 
-- properties属性配置
+- 字段的properties属性配置
 
   1. index
 
