@@ -139,3 +139,23 @@ echo '卸载成功...'
 
 # 三、docker常用命令
 
+## 3.1、帮助启动类命令
+
+```sh
+#启动docker
+systemctl start docker
+#停止docker： 
+systemctl stop docker
+#重启docker： 
+systemctl restart docker
+#查看docker状态
+systemctl status docker
+#开机启动
+systemctl enable docker
+#查看docker概要信息
+docker info
+#查看docker总体帮助文档
+docker --help
+```
+
+## 3.2、镜像命令
