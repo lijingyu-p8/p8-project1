@@ -20,7 +20,7 @@
 - 同步发送
 
   ```java
-  public class Test {
+public class Test {
   	public static void main(String[] args) throws Exception {
   		// 创建一个producer，参数为Producer Group名称
   		DefaultMQProducer producer = new DefaultMQProducer("pg");
@@ -48,7 +48,7 @@
   	}
   }
   ```
-
+  
 - 异步发送
 
   ```java

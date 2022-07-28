@@ -2,17 +2,80 @@
 
 ## 安装和配置
 
-### 1、windows安装
+### 1、windows安装（集群3个节点）
 
-```
-bin目录下
-/bin elasticsearch.bat
-启动成功验证：http://localhost:9200/
-```
+1. 下载链接https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.4-windows-x86_64.zip
 
-![image-20210805063859710](images/windows.png)
+2. 解压缩后复制三份。
 
-### 2、Linux安装
+   ![](images/解压目录.png)
+
+3. config目录下，依次修改elasticsearch.yml文件
+
+   - node01
+
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node01
+     network.host: localhost
+     http.port: 9201
+     discovery.seed_hosts: ["127.0.0.1:9301","127.0.0.1:9302", "127.0.0.1:9303"]
+     transport.tcp.port: 9301
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
+
+   - node02
+
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node02
+     network.host: localhost
+     http.port: 9202
+     discovery.seed_hosts: ["127.0.0.1:9301","127.0.0.1:9302", "127.0.0.1:9303"]
+     transport.tcp.port: 9302
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
+
+   - node03
+
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node03
+     network.host: localhost
+     http.port: 9203
+     discovery.seed_hosts: ["127.0.0.1:9301","127.0.0.1:9302", "127.0.0.1:9303"]
+     transport.tcp.port: 9303
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
+
+4. 依次启动
+
+   数据目录在
+
+   ```java
+   node01-elasticsearch-7.17.4\data\
+   node02-elasticsearch-7.17.4\data\
+   node03-elasticsearch-7.17.4\data\
+   ```
+
+   依次启动node01、node02、node03 bin目录下elasticsearch.bat文件
+
+   ![](images/启动成功验证.png)
+
+
+### 2、Linux安装（集群3个节点）
 
 #### 1、安装
 
@@ -114,7 +177,23 @@ cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必
 
    ![image-20210821211157577](images/安装问题-max-virtual-1.png)
 
-### 3、head插件安装
+### 3、kibana安装（windows）
+
+1. 下载链接https://artifacts.elastic.co/downloads/kibana/kibana-7.17.4-windows-x86_64.zip
+
+2. 解压缩后进入config目录下，修改kibana.yml文件
+
+   ```yaml
+   elasticsearch.hosts: ["http://localhost:9201"]
+   ```
+
+3. 启动
+
+   bin目录下执行kibana.bat文件，启动成功之后访问http://localhost:5601
+
+   ![](images/kibana安装.png)
+
+### 4、head插件安装
 
 ```
 git clone git://github.com/mobz/elasticsearch-head.git
@@ -135,7 +214,7 @@ http.cors.allow-origin: "*"
 
 ![head](images/head.png)
 
-### 4、常用配置
+### 5、常用配置
 
 - Cluster&Node
 
