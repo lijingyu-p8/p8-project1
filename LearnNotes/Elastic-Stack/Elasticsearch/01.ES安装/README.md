@@ -18,9 +18,9 @@
      cluster.name: es-cluster
      node.name: node01
      network.host: localhost
-     http.port: 9201
+     http.port: 9201 #restful端口
      discovery.seed_hosts: ["127.0.0.1:9301","127.0.0.1:9302", "127.0.0.1:9303"]
-     transport.tcp.port: 9301
+     transport.tcp.port: 9301 #es各节点间通信端口
      cluster.initial_master_nodes: ["node01"]
      node.master: true
      node.data: true
@@ -73,77 +73,144 @@
    依次启动node01、node02、node03 bin目录下elasticsearch.bat文件
 
    ![](images/启动成功验证.png)
+   
+5. jdk环境依赖问题
+
+   Elasticsearch 是使用 java 开发的，且 7.8 版本的 ES 需要 JDK 版本 1.8 以上，默认安装 包带有 jdk 环境，如果系统配置 JAVA_HOME，那么使用系统默认的 JDK，如果没有配 置使用自带的 JDK，一般建议使用系统配置的 JDK。
+
+6. 内存问题
+
+   双击启动窗口闪退，通过路径访问追踪错误，如果是“空间不足”，请修改 config/jvm.options 配置文件
+
+   ```yaml
+   # 设置 JVM 初始内存为 1G。此值可以设置与-Xmx 相同，以避免每次垃圾回收完成后 JVM 重新分配内存
+   # Xms represents the initial size of total heap space
+   # 设置 JVM 最大可用内存为 1G
+   # Xmx represents the maximum size of total heap space
+   -Xms1g
+   -Xmx1g
+   ```
 
 
 ### 2、Linux安装（集群3个节点）
 
 #### 1、安装
 
-```
-创建目录
-/usr/local/soft/es
-下载
-wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.13.2-linux-x86_64.tar.gz
-解压缩
-tar -xzf es.zip
-```
+1. 准备三台Linux虚拟机
 
-![image-20210821205538638](images/安装-1.png)
+2. 下载链接：https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.5-linux-x86_64.tar.gz
 
-```
-创建非root账户，es只能在非root账户下
-adduser esuser：创建es账号
-passwd esuser：设置es账号的密码
-chown -R esuser /usr/local/soft 给账户赋予目录权限
-```
+3. 解压缩
 
-修改es配置。如果不修改，将只能通过127.0.0.1:9200访问
+   ```bash
+   #创建目录
+   mkdir /usr/local/soft
+   #进入目录后，可以下载后ftp上传，也可以直接Linux中下载
+   wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.5-linux-x86_64.tar.gz
+   #解压缩
+   tar -xzf elasticsearch-7.17.5-linux-x86_64.tar.gz
+   ```
 
-```
-进入conf目录，修改
-vi /usr/local/soft/es/elasticsearch-7.13.2/config/elasticsearch.yml
-修改配置：
-network.host: 192.168.73.90 //配置向外暴露的ip。0.0.0.0代表允许所有ip访问
-cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必须有master节点
-```
+   ![image-20220731194052444](images/安装-1.png)
 
-![image-20210821210223288](images/安装问题-config-1.png)
+4. config目录下，修改elasticsearch.yml文件
 
-使用创建的es用户登陆
+   - node01
 
-```
-进入bin目录
-./elasticsearch
-```
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node01
+     network.host: 192.168.152.131
+     http.port: 9201 #restful端口
+     discovery.seed_hosts: ["192.168.152.131:9301","192.168.152.133:9302", "192.168.152.134:9303"]
+     transport.tcp.port: 9301 #es各节点间通信端口
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
 
-![image-20210821210436068](images/linux-es启动-1.png)
+   - node02
 
-![image-20210821210606027](images/linux-es启动成功.png)
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node02
+     network.host: 192.168.152.133
+     http.port: 9202 #restful端口
+     discovery.seed_hosts: ["192.168.152.131:9301","192.168.152.133:9302", "192.168.152.134:9303"]
+     transport.tcp.port: 9302 #es各节点间通信端口
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
+
+   - node03
+
+     ```yaml
+     cluster.name: es-cluster
+     node.name: node03
+     network.host: 192.168.152.131
+     http.port: 9203 #restful端口
+     discovery.seed_hosts: ["192.168.152.131:9301","192.168.152.133:9302", "192.168.152.134:9303"]
+     transport.tcp.port: 9303 #es各节点间通信端口
+     cluster.initial_master_nodes: ["node01"]
+     node.master: true
+     node.data: true
+     http.cors.enabled: true
+     http.cors.allow-origin: "*"
+     ```
+
+5. 创建非root用户
+
+   ```bash
+   #创建非root账户，es只能在非root账户下
+   adduser esuser
+   passwd esuser
+   #给账户赋予目录权限
+   chown -R elastic /usr/local/soft
+   ```
+
+6. 使用创建的非root用户登录
+
+   ```bash
+   cd /usr/local/soft/elasticsearch-7.17.5/bin/
+   #启动
+   ./elasticsearch
+   ```
+
+   ![](images/linux-es启动成功.png)
 
 #### 2、访问测试
 
 1. 浏览器访问
 
-   ![image-20210821211429396](images/浏览器访问测试-1.png)
+   - 单节点
 
-2. Linux访问
+   ![](images/浏览器访问测试-1.png)
 
-   ![image-20210821211522339](images/linux访问测试-1.png)
-   
-3. 如果访问不了，关闭防火墙
+   - 集群节点
 
-   ```
-   >>>关闭防火墙
-   systemctl stop firewalld.service            #停止firewall
-   systemctl disable firewalld.service        #禁止firewall开机启动
+     ![](images/浏览器访问测试-2.png)
+
+2. 如果访问不了，关闭防火墙
+
+   ```bash
+   #>>>关闭防火墙
+   #停止firewall
+   systemctl stop firewalld.service
+   #禁止firewall开机启动
+   systemctl disable firewalld.service
    ```
 
 #### 3、普遍遇到的问题
 
 1. max file descriptors [4096] for elasticsearch process is too low, increase to at least [65535]
 
-   ```
-   vi  /etc/security/limits.conf
+   ```bash
+   vi /etc/security/limits.conf
    在最后增加配置
    * soft nofile 65536
    * hard nofile 65536
@@ -157,7 +224,7 @@ cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必
 
    最大线程数不够
 
-   ```
+   ```bash
    vi  /etc/security/limits.conf
    在最后增加配置
    * soft nproc 4096
@@ -168,7 +235,7 @@ cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必
 
 3. max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
 
-   ```
+   ```bash
    vi /etc/sysctl.conf
    在最后增加配置
    vm.max_map_count=262144
@@ -193,7 +260,41 @@ cluster.initial_master_nodes:["192.168.73.90"]//配置master节点。es集群必
 
    ![](images/kibana安装.png)
 
-### 4、head插件安装
+### 4、kibana安装（Linux）
+
+1. 下载链接：https://artifacts.elastic.co/downloads/kibana/kibana-7.17.5-linux-x86_64.tar.gz
+
+2. 解压缩
+
+   ```bash
+   #创建目录
+   mkdir /usr/local/soft
+   #进入目录后，可以下载后ftp上传，也可以直接Linux中下载
+   wget https://artifacts.elastic.co/downloads/kibana/kibana-7.17.5-linux-x86_64.tar.gz
+   #解压缩
+   tar -xvf kibana-7.17.5-linux-x86_64.tar.gz
+   ```
+
+3. 进入config目录下修改kibana.yml文件
+
+   ```yaml
+   server.port: 5601
+   server.host: "192.168.152.131" #当前Linux的ip
+   elasticsearch.hosts: ["http://192.168.152.131:9201"]
+   ```
+
+4. 非root用户启动
+
+   ```
+   #root用户赋权限
+   chown -R elastic /usr/local/soft
+   #非root用户bin目录下执行
+   ./kibana
+   ```
+
+   ![](images/kibana安装-linux.png)
+
+### 5、head插件安装
 
 ```
 git clone git://github.com/mobz/elasticsearch-head.git
@@ -214,7 +315,7 @@ http.cors.allow-origin: "*"
 
 ![head](images/head.png)
 
-### 5、常用配置
+### 6、常用配置
 
 - Cluster&Node
 
