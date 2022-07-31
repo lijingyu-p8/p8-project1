@@ -1,11 +1,9 @@
-# Elasticsearch
+# Elasticsearch索引
 
-## 一、索引创建
+## 一、索引相关组成
 
-7.0之后，索引的默认分片数为1，7.0之前默认为5。
-
-```
-PUT product(索引name)
+```json
+PUT index-name(索引name)
 {
   "settings": {
     
@@ -19,13 +17,28 @@ PUT product(索引name)
 }
 ```
 
-### Setting
+### 1.1、setting
 
-#### 1、分析器
+#### 1.1.1、基本配置
+
+- 设置后不可更改
+  1. number_of_shards：主分片个数（7.x以后默认是1，以前默认是5），每个索引分片数量上限：1024。
+  2. codec：存储时数据的压缩策略，可设置为best_compression（压缩元数据，会降低性能）。默认是default，不压缩。
+  3. blocks.read_only：设置为true可使索引和索引元数据为只读，设置为false可允许写入和元数据更改。
+  4. blocks.read：设置为true以禁用对索引的读取操作。
+  5. blocks.write：设置为true以禁用针对索引的数据写入操作。
+  6. blocks.metadata：设置为true以禁用索引元数据读取和写入。
+- 设置后可重复修改
+  1. number_of_replicas：为每个主分片分配的副本个数，默认是1。
+  2. auto_expand_replicas：根据集群中数据节点的数量自动扩展副本的数量。设置为以短划线分隔的上下限（例如0-5）或all 用于上限（例如0-all）。默认为false（即禁用）。
+  3. max_result_window：搜索到此索引的from+size的最大值。默认值为10000。搜索请求占用的堆内存和时间与from+size成比例，这限制了该内存。
+  4. max_rescore_window：
+
+#### 1.1.2、分析器
 
 - 分析器四大组成部分
 
-  ```
+  ```json
   PUT product2
   {
     "settings": {
@@ -154,9 +167,9 @@ PUT product(索引name)
    }
    ```
 
-   正则匹配分隔符：pattern，将文本分成若干词项。
+   示例：正则匹配分隔符：pattern，将文本分成若干词项。
 
-   "flags":"CASE_INSENSITIVE" 匹配的时候忽略大小写。（可选项）
+   ​           "flags":"CASE_INSENSITIVE" 匹配的时候忽略大小写。（可选项）
 
    ```json
    PUT /my-index-13
@@ -188,7 +201,7 @@ PUT product(索引name)
 
    ![image-20210808231513059](images/tokenizer_1.png)
 
-   正则匹配词项：simple_pattern
+   示例：正则匹配词项：simple_pattern
 
    ```json
    PUT my-index-14
@@ -255,22 +268,7 @@ PUT product(索引name)
    }
    ```
 
-#### 2、常用设置
-
-- 设置后不可更改
-  1. index.number_of_shards：主分片个数（7.x以后默认是1，以前默认是5），每个索引分片数量上限：1024。
-  2. index.codec：best_compression（压缩元数据，会降低性能）。默认是default，不压缩。
-  3. blocks.read_only：设置为true使索引和元数据只读。
-  8.	blocks.read：true，禁止索引读操作。
-  9.	blocks.write：true，禁止写索引。
-  10.	blocks.metadata：true，禁用元数据读写。
-- 设置后可重复修改
-  1. number_of_replicas：为每个主分片分配的副本个数，默认是1。
-  2. index.auto_expand_replicas：根据集群中数据节点的数量自动扩展副本的数量。设置为以短划线分隔的上下限（例如0-5）或all 用于上限（例如0-all）。默认为false（即禁用）。
-  3. index.max_result_window：最大值页容量，默认1W。
-- 
-
-### Mapping
+### 1.2、Mapping
 
 ​        映射是定义文档及其包含的字段如何存储和索引的过程。每个文档都是一批字段的集合，每个字段都有自己的数据类型、默认值、分析器、是否被索引等等配置信息。这些都是映射里面可以设置的，按照最优规则处理数据对ES性能提高很大，因此才需要建立映射，并且需要思考如何建立映射才能对性能更好。
 
@@ -539,7 +537,50 @@ PUT product(索引name)
       5.	影响索引的容灾能力。
          如果是出于节省磁盘空间的目的，可以考虑压缩元数据（LZ4压缩）。但是会损失性能。
 
-### Aliases
+#### dynamic
+
+- properties同级别，用于设置是否可以动态添加字段。
+
+- true 新检测到的字段将添加到映射中。（默认）
+
+- false 新检测到的字段将被忽略。这些字段将不会被索引，因此将无法搜索，但仍会出现在_source返回的匹配项中。这些字段不会添加到映射中，必须显式添加新字段。
+
+- strict 如果检测到新字段，则会引发异常并拒绝文档。必须将新字段显式添加到映射中。
+
+  ```json
+  {
+  	"mappings": {
+  		"properties": {
+  			"field_1": {
+  				"type": "text",
+  				"analyzer": "standard",
+  				"boost": 2
+  			}
+  		},
+  		"dynamic": true
+  	}
+  }
+  ```
+
+#### doc_values和fielddata
+
+- doc_values和fielddata均是为创建正排索引服务的。
+
+- 倒排索引：查询某个关键词在哪些文档中存在。
+
+- 正排索引：查询某个文档中包含哪些项。
+
+- doc_values的优势是他不会随着文档的增多引起OOM问题。doc_values在磁盘创建排序和聚合所需的正排索引。这样就避免了在生产环境给ES设置一个很大的HEAP_SIZE，也使得JVM的GC更加高效，这个又为其它的操作带来了间接的好处。而且，随着ES版本的升级，对于doc_values的优化越来越好，索引的速度已经很接近fielddata了，而且硬盘的访问速度也是越来越快（比如SSD）。所以doc_values 现在可以满足大部分场景，也是ES官方重点维护的对象。
+
+- fileddata是在使用时创建、基于内存的正排索引。
+
+  | 维度     | doc_values     | fielddata      |
+  | -------- | -------------- | -------------- |
+  | 创建时间 | index时创建    | 使用时动态创建 |
+  | 创建位置 | 磁盘           | 内存(jvm heap) |
+  | 优点     | 不占用内存空间 | 不占用磁盘空间 |
+
+### 1.3、Aliases
 
 - 为索引创建别名，搜索时也可以使用别名进行搜索。并且创建别名的时候，可以设置filter条件。这样直接使用别名查询的时候，就可以查询到filter后的数据了。
 
@@ -582,49 +623,6 @@ PUT product(索引name)
   ```
   GET price/_search
   ```
-
-### Dynamic
-
-- properties同级别，用于设置是否可以动态添加字段。
-
-- true 新检测到的字段将添加到映射中。（默认）
-
-- false 新检测到的字段将被忽略。这些字段将不会被索引，因此将无法搜索，但仍会出现在_source返回的匹配项中。这些字段不会添加到映射中，必须显式添加新字段。
-
-- strict 如果检测到新字段，则会引发异常并拒绝文档。必须将新字段显式添加到映射中。
-
-  ```json
-  {
-  	"mappings": {
-  		"properties": {
-  			"field_1": {
-  				"type": "text",
-  				"analyzer": "standard",
-  				"boost": 2
-  			}
-  		},
-  		"dynamic": true
-  	}
-  }
-  ```
-
-### doc_values和fielddata
-
-- doc_values和fielddata均是为创建正排索引服务的。
-
-- 倒排索引：查询某个关键词在哪些文档中存在。
-
-- 正排索引：查询某个文档中包含哪些项。
-
-- doc_values的优势是他不会随着文档的增多引起OOM问题。doc_values在磁盘创建排序和聚合所需的正排索引。这样就避免了在生产环境给ES设置一个很大的HEAP_SIZE，也使得JVM的GC更加高效，这个又为其它的操作带来了间接的好处。而且，随着ES版本的升级，对于doc_values的优化越来越好，索引的速度已经很接近fielddata了，而且硬盘的访问速度也是越来越快（比如SSD）。所以doc_values 现在可以满足大部分场景，也是ES官方重点维护的对象。
-
-- fileddata是在使用时创建、基于内存的正排索引。
-
-  | 维度     | doc_values     | fielddata      |
-  | -------- | -------------- | -------------- |
-  | 创建时间 | index时创建    | 使用时动态创建 |
-  | 创建位置 | 磁盘           | 内存(jvm heap) |
-  | 优点     | 不占用内存空间 | 不占用磁盘空间 |
 
 ## 二、索引查询
 
@@ -675,7 +673,7 @@ DELETE product(索引name)
 
 ## 五、cat命令
 
-```
+```bash
 /_cat/allocation      	#查看单节点的shard分配整体情况
 /_cat/shards          #查看各shard的详细情况
 /_cat/shards/{index}  	#查看指定分片的详细情况
@@ -931,7 +929,7 @@ DELETE product(索引name)
 ## 十、stats
 
 - 可以查看索引资源的占用情况和一些系统记录
-- ![image-20210821144527830](images/stats-1.png)
 
+  ![](images/stats-1.png)
 - 通过stats可以看到当前索引的文档数据总数、存储空间大小、get指令总数、search总数等相关信息。
 - recovery：es宕机之后，OS Cache内存中一部分数据还没持久化到磁盘中，这部分数据的操作记录会记录在tranlog里，recovery指令是可以在ES恢复服务之后，将translog里的数据进行恢复。
