@@ -342,6 +342,12 @@ PUT index-name(索引name)
   8. 复杂类型Nested
 
      用于多个json数组。
+     
+  9. Geo-point：纬度/经度
+
+  10. Geo-shape：用于多边形等复杂形状
+
+  11. Dense vector：记录浮点值的密集向量
 
 - 字段的properties属性配置
 

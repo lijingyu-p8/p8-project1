@@ -1,6 +1,6 @@
-# Elasticsearch
+# Elasticsearch查询
 
-## Query DSL
+## 一、Query DSL
 
 ### 1、指定id查询
 
@@ -10,25 +10,25 @@ GET product/_doc/8888
 
 ### 2、match_all
 
-- 查询所有
+查询所有
 
-  ```
-  GET student/_search
-  {
-    "query": {
-      "match_all": {}
-    }
+```json
+GET student/_search
+{
+  "query": {
+    "match_all": {}
   }
-  # "query"：这里的 query 代表一个查询对象，里面可以有不同的查询属性
-  # "match_all"：查询类型，例如： match_all(代表查询所有)， match， term ， range 等等
-  # {查询条件}：查询条件会根据类型的不同，写法也有差异
-  ```
+}
+# "query"：这里的 query 代表一个查询对象，里面可以有不同的查询属性
+# "match_all"：查询类型，例如： match_all(代表查询所有)， match， term ， range 等等
+# {查询条件}：括号内查询条件会根据类型的不同，写法也有差异
+```
 
-  ![image-20210807114649608](images/match_all.png)
+![](images/match_all.png)
 
 ### 3、match
 
-- 条件匹配，关键词会被分词
+条件匹配，match 匹配类型查询，会把查询条件进行分词，然后进行查询，多个词条之间是 or 的关系
 
 - 简单搜索
 
@@ -37,7 +37,7 @@ GET product/_doc/8888
   {
     "query": {
       "match": {
-        "name": "zhangsan"
+        "name": "hello world" #默认分词器会将关键词分词成hello、world两个词，同时对两个词进行查询
       }
     }
   }
@@ -57,73 +57,88 @@ GET product/_doc/8888
           "zero_terms_query": "all", 
           "fuzziness": 1,
           "auto_generate_synonyms_phrase_query": "true",
-          "analyzer": "standard"
+          "analyzer": "standard",
+          "boost": 1
         }
       }
     }
   }
   ```
 
-  1. query: 查询的关键词
-  2. operator: match查询。关键词是会被分词，查询结果是bool类型，默认是or，可以指定为and，只有全部分词结果匹配才是目标数据。 
-  3. minimum_should_match: 最小匹配数量，默认是1，比如my name li 分词后是三个词，若设置为2，只有其中两个匹配上了，才算匹配成功。
-  4. zero_terms_query: 零词查询，ES查询默认是会对无效词进行过滤的，is、a、he、or这类词会被过滤掉。设置为"all"则不会被过滤，比如查询"to be or not to be"，就不能被过滤，否则没有结果。 
-  5. fuzziness: 模糊查询最大误差，并非越大越好，最大误差越大，导致召回率高，但是结果不准确。
-  6. auto_generate_synonyms_phrase_query: 启用同义词，比如like love 可以理解为同义词，ES查询时，默认时开启的。
-  7. analyzer: 指定分词器，默认的是standard。
+  1. query：查询的关键词
+  2. operator：match查询。关键词是会被分词，查询结果是bool类型，默认是or，可以指定为and，只有全部分词结果匹配才是目标数据。 
+  3. minimum_should_match：最小匹配数量，默认是1，比如my name li 分词后是三个词，若设置为2，只有其中两个匹配上了，才算匹配成功。
+  4. zero_terms_query：零词查询，ES查询默认是会对无效词进行过滤的，is、a、he、or这类词会被过滤掉。设置为"all"则不会被过滤，比如查询"to be or not to be"，就不能被过滤，否则没有结果。 
+  5. fuzziness：模糊查询最大误差，并非越大越好，最大误差越大，导致召回率高，但是结果不准确。
+  6. auto_generate_synonyms_phrase_query：启用同义词，比如like love 可以理解为同义词，ES查询时，默认时开启的。
+  7. analyzer：指定分词器，默认的是standard。
+  8. boost：权重，一般在多查询中使用，配置不同字段在计算评分中不同的权重比例。
 
-- 
+### 4、match_phrase
 
-### 4、term
+短语搜索，和全文检索相反，搜索词会作为一个短语去检索。
 
-- 关键词不会被分词，当作一个完整的短语进行匹配
+```json
+GET /product/_search
+{
+  "query": {
+    "match_phrase": {
+      "name": "nfc phone"
+    }
+  }
+}
+```
 
-  ```json
-  GET product/_search
-  {
-    "query": {
-      "term": {
-        "name": {
-          "value": "xiaomi phone"
-        }
+### 5、term
+
+关键词不会被分词，当作一个完整的短语进行匹配
+
+```json
+GET product/_search
+{
+  "query": {
+    "term": {
+      "name": {
+        "value": "xiaomi phone"
       }
     }
   }
-  ```
+}
+```
 
-  会使用完整的“xiaomi phone”进行数据匹配。所以有可能导致会搜索不到匹配的记录。
+会使用完整的“xiaomi phone”进行数据匹配。所以有可能导致会搜索不到匹配的记录。
 
-- 
+### 6、terms
 
-### 5、terms
+terms 查询和 term 查询一样，但它允许你指定多值进行匹配。如果这个字段包含了指定值中的任何一个值，那么这个文档满足条件，类似于 mysql 的 in。
 
-- 和term查询效果相同，但是可以指定多个值。只要其中任何一个满足条件，文档即匹配。
-
-  ```json
-  GET product/_search
-  {
-    "query": {
-      "terms": {
-        "name": [
-          "phone",
-          "nfc"
-        ]
-      }
+```json
+GET product/_search
+{
+  "query": {
+    "terms": {
+      "name": [
+        "phone",
+        "nfc"
+      ]
     }
   }
-  ```
+}
+```
 
-- 
+name包含“phone”或者“nfc”的，可以进行匹配。
 
-### 6、_source
+### 7、_source
 
-- 指定查询字段。默认情况下，es查询结果会把_source包含的所有字段都返回。可以通过"__source"指定返回的字段。
+- 指定查询结果中返回的字段。默认情况下，es查询结果会把_source包含的所有字段都返回。可以通过"__source"指定返回的字段。但是有一点需要注意，es还是会把所有数据都查询，只是再最后返回给client的时候，依据source自定义的字段进行返回。
+
+- 减少不必要的数据返回，可以降低网络压力。
 
 - includes：来指定想要显示的字段
 
 - excludes：来指定不想要显示的字段
 
-  ```
+  ```json
   GET product/_search
   {
     "query": {
@@ -131,68 +146,138 @@ GET product/_doc/8888
         "name": "xiaomi phone"
       }
     },
-    "_source": ["name","price"], 
+    "_source": false,  #不返回source
+    "_source": ["name","price"], #指定返回字段
     "_source": {
-      "excludes": ["desc","price"],
-      "includes": ["desc","price"]
+      "excludes": ["desc","price"], #排除
+      "includes": ["desc","price"]  #包括
     }
   }
   ```
 
-- 
+### 8、prefix
 
-### 6、prefix
+前缀查询，返回在提供的字段中包含特定前缀的文档。
 
-### 7、sort排序
+```json
+GET product/_search
+{
+  "query": {
+    "prefix": {
+      "name.keyword": {
+        "value": "A"
+      }
+    }
+  }
+}
+```
 
-- 排序，desc、asc
+### 9、sort排序
 
-  ```json
-  GET product/_search
-  {
-    "query": {
-      "match_all": {}
-    },
-    "sort": [
-      {
-        "price": {
-          "order": "desc"
-        },
-        "_score": {
-          "order": "asc"
+sort 可以让我们按照不同的字段进行排序，并且通过 order 指定排序的方式。desc 降序，asc升序。
+
+```json
+GET product/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [
+    {
+      "price": {
+        "order": "desc"
+      },
+      "_score": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+#也支持script
+GET product/_search
+{
+  "query": {
+    "term": { "user": "kimchy" }
+  },
+  "sort": {
+    "_script": {
+      "type": "number",
+      "script": {
+        "lang": "painless",
+        "source": "doc['field_name'].value * params.factor",
+        "params": {
+          "factor": 1.1
         }
-      }
-    ]
-  }
-  ```
-
-## 组合查询
-
-- bool把各种其它查询通过must（必须 ）、 must_not（必须不）、 should（应该）的方式进行组合。
-
-  ```json
-  GET product/_search
-  {
-    "query": {
-      "bool": {
-        "must": [
-          {}
-        ],
-        "must_not": [
-          {}
-        ],
-        "should": [
-          {}
-        ],
-        "filter": [
-          {}
-        ],
-        "minimum_should_match": 1,
-        "boost": 1
-      }
+      },
+      "order": "asc"
     }
   }
-  ```
+}
+#script
+GET product/_search
+{
+  "sort": [
+    {
+      "time": {
+        "order": "asc"
+      }
+    },
+    {
+      "_script": {
+        "type": "number",
+        "script": {
+          "lang": "painless",
+          "source": "doc['price'].value * params.factor",
+          "params": {
+            "factor": 1.1
+          }
+        },
+        "order": "asc"
+      }
+    }
+  ]
+}
+```
+
+## 二、超时机制
+
+```json
+GET product/_search
+{
+  "timeout": "1s"
+}
+```
+
+默认没有timeout，如果设置了timeout，那么会执行timeout机制。
+Timeout机制：假设用户查询结果有1W条数据，但是需要10s才能查询完毕，但是用户设置了1s的timeout，那么不管当前一共查询到了多少数据，都会在1s后ES将停止查询，并返回当前数据。
+
+## 三、组合查询
+
+bool把各种其它查询通过must（必须 ）、 must_not（必须不）、 should（应该）的方式进行组合。
+
+```json
+GET product/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {}
+      ],
+      "must_not": [
+        {}
+      ],
+      "should": [
+        {}
+      ],
+      "filter": [
+        {}
+      ],
+      "minimum_should_match": 1,
+      "boost": 1
+    }
+  }
+}
+```
 
 - must
 
@@ -204,11 +289,11 @@ GET product/_doc/8888
 
 - should
 
-  可能包含，返回的文档可能满足should子句的条件。在一个Bool查询中，如果没有must或者filter，有一个或者多个should子句，那么只要满足一个就可以返回。
+  可能包含，返回的文档可能满足should子句的条件。在一个Bool查询中，如果没有must或者filter，有一个或者多个should子句，那么只要满足一个就可以返回。如果存在must或者filter，那么should中可满足>=0。minimum_should_match=0
 
 - filter
 
-  过滤，返回的文档必须满足filter子句的条件。但是不会像Must一样参与计算分值。filter不会计算score，结果是会被缓存的。
+  过滤，返回的文档必须满足filter子句的条件。但是不会像Must一样参与计算分值。filter不会计算score，并且结果是会被缓存的。
 
 - minimum_should_match
 
@@ -228,27 +313,69 @@ GET product/_doc/8888
   4. filter不会计算相关度分数。效率也会比query高。
   5. 当元数据（原始数据）更新的时候，cache也会更新。
 
-## 范围查询
+### 示例
 
-- 查询找出那些落在指定区间内的数字或者时间。 range 查询允许以下字符
-
-  ![](images/range-1.png)
-
-  ```json
-  GET product/_search
-  {
-    "query": {
-      "range": {
-        "price": {
-          "gte": 3000,
-          "lte": 4000
+```json
+GET /product/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "name": "xiaomi" #name必须包含xiaomi
+          }
         }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "name": "erji" #name必须不含有erji
+          }
+        }
+      ],
+      "should": [
+        {
+          "match": {
+            "desc": "nfc" #desc中包含nfc，至少0个满足
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "price": {
+              "gt": 4999
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+## 四、范围查询
+
+查询找出那些落在指定区间内的数字或者时间。 range 查询允许以下字符
+
+![](images/range-1.png)
+
+```json
+GET product/_search
+{
+  "query": {
+    "range": {
+      "price": {
+        "gte": 3000,
+        "lte": 4000
       }
     }
   }
-  ```
+}
+```
 
-## 分页查询
+## 五、分页查询
 
 - from：当前页的起始索引，默认从 0 开始。 from = (pageNum - 1) * size
 
@@ -283,7 +410,7 @@ GET product/_doc/8888
 
 - 游标滚动查询
 
-  相当于mysql中生成快照的方式,所以如果在游标查询期间有增删改操作,是获取不到最新的数据的.在过期时间内,之后的查询的scroll_id是不变的.
+  相当于mysql中生成快照的方式，所以如果在游标查询期间有增删改操作，是获取不到最新的数据的。在过期时间内，之后的查询的scroll_id是不变的。
 
   ```json
   GET product/_search?scroll=1m //过期时间为1分钟
@@ -303,11 +430,10 @@ GET product/_doc/8888
 
   返回结果
 
-  ![image-20210808182901155](images/滚动查询.png)
+  ![](images/滚动查询.png)
 
-- 
 
-## 模糊查询
+## 六、模糊查询
 
 - 返回包含与搜索字词相似的字词的文档。编辑距离是将一个术语转换为另一个术语所需的一个字符更改的次数。
 
@@ -336,13 +462,15 @@ GET product/_doc/8888
   }
   ```
 
-## 聚合查询
+## 七、聚合查询
 
 ### 基本概念
 
 - 聚合允许使用者对 es 文档进行统计分析，类似关系型数据库中的 group by，也有很多其他的聚合，例如取最大值、平均值等等。
 
 - 聚合使用aggs关键字，使用"size": 0，可以不返回原始数据
+
+- 用于进行聚合的字段必须是exact value，分词字段不可进行聚合
 
 - 聚合分析的字段如果是text类型，一定打开doc value创建正排索引，否则打开fielddata =true(不推荐)。
 
@@ -396,6 +524,12 @@ GET product/_doc/8888
 
   ![image-20210808220509565](images/aggs-2.png)
 
+### 聚合分类
+
+1. 分桶聚合（Bucket agregations）：类比SQL中的group by的作用，主要用于统计不同类型数据的数量
+2. 指标聚合（Metrics agregations）：主要用于最大值、最小值、平均值、字段之和等指标的统计
+3. 管道聚合（Pipeline agregations）：用于对聚合的结果进行二次聚合，如要统计绑定数量最多的标签bucket，就是要先按照标签进行分桶，再在分桶的结果上计算最大值。
+
 ### 聚合排序
 
 - 排序
@@ -428,20 +562,21 @@ GET product/_doc/8888
 
   ![image-20210815161143574](images/aggs-order1.png)
 
-- 多桶排序
+- 多层排序
 
-  多个aggs的name进行排序，一级、二级。
+  按照多层聚合中的里层某个聚合的结果进行排序
 
   ```json
+  #多个aggs的name进行排序，一级、二级。以里层聚合的sum值进行外层排序
   "terms": {
           "field": "tags.keyword",
           "order": {
             "agg_stats>stats.sum": "desc"
           }
         },
-  ```
-
-  ```
+```
+  
+  ```json
   GET product/_search
   {
     "size": 0,
@@ -450,7 +585,7 @@ GET product/_doc/8888
         "terms": {
           "field": "tags.keyword",
           "order": {
-            "agg_stats>stats.sum": "desc"
+            "agg_stats>stats.sum": "desc" #以里层stats的sum值进行外层排序
           }
         },
         "aggs": {
@@ -474,10 +609,10 @@ GET product/_doc/8888
       }
     }
   }
-  ```
-
-  extended_stats会把所有的计算结果进行展示，比如sum、avg、max等等
-
+```
+  
+extended_stats会把所有的计算结果进行展示，比如sum、avg、max等等
+  
   ![image-20210815174758474](images/aggs-order2.png)
 
 ### global
@@ -514,60 +649,61 @@ GET product/_doc/8888
   }
   ```
 
-  外层的avg聚合，受到了query的影响，计算的结果是在query结果基础上进行分析的。内部的global是全局分析。不受外层影响。
+  外层的avg（avg_price1）聚合，受到了query的影响，计算的结果是在query结果基础上进行分析的。内部的global（avg_price2）是全局分析。不受外层影响。
 
-- ![image-20210815162836093](images/aggs-global-1.png)
+  ![](images/aggs-global-1.png)
 
-### histogram
 
-- 柱状图聚合，可以设定间隔区间。
+### histogram直方图或柱状图统计
 
-  1. interval：设定间隔区间
-  2. min_doc_count：只展示结果大于等于1条的数据，可以过滤掉空数据。
-  3. keyed：展示bucket结果中，是key-value形式
-  4. missing：当某条记录是空置时，会给默认值
-  5. extended_bounds：当统计数据时，最大数据不到设定的最大值，会自动补充，并count为0；
+柱状图聚合，可以设定间隔区间。
 
-  ```json
-  GET product/_search
-  {
-    "size": 0,
-    "aggs": {
-      "price": {
-        "histogram": {
-          "field": "price",
-          "interval": 1000,
-          "min_doc_count": 0,
-          "keyed": true,
-          "missing": 4999,
-          "extended_bounds": {
-            "min": 0,
-            "max": 10000
-          }
-        },
-        "aggs": {
-          "avg_price": {
-            "avg": {
-              "field": "price"
-            }
+1. interval：设定间隔区间
+2. min_doc_count：只展示结果大于等于1条的数据，可以过滤掉空数据。
+3. keyed：展示bucket结果中，是key-value形式
+4. missing：当某条记录是空置时，会给默认值
+5. extended_bounds：当统计数据时，最大数据不到设定的最大值，会自动补充，并count为0；
+
+```json
+GET product/_search
+{
+  "size": 0,
+  "aggs": {
+    "price": {
+      "histogram": {
+        "field": "price",
+        "interval": 1000,
+        "min_doc_count": 0,
+        "keyed": true,
+        "missing": 4999,
+        "extended_bounds": {
+          "min": 0,
+          "max": 10000
+        }
+      },
+      "aggs": {
+        "avg_price": {
+          "avg": {
+            "field": "price"
           }
         }
       }
     }
   }
-  ```
+}
+```
 
-  ![image-20210815172023702](images/histogram.png)
+![image-20210815172023702](images/histogram.png)
 
-- date-histogram
+### date-histogram基于日期的直方图
 
-  时间格式的柱状图统计。format格式化
+时间格式的柱状图统计。format格式化
 
-  ![image-20210815173525084](images/date-histogram.png)
+![](images/date-histogram.png)
 
 ### stats扩展
 
-ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、max、avg等计算结果，ES提供扩展stats关键字指令，可以默认提供一系列的默认实现。
+ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、max、avg等计算结果，另外ES提供扩展stats关键字指令，可以默认提供一系列的默认实现。
 
 - 数值类型
 
@@ -584,7 +720,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   }
   ```
 
-  ![image-20210815213552986](images/数值-stats.png)
+  ![](images/数值-stats.png)
 
 - string类型
 
@@ -611,7 +747,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
 
 - 去重查询，并且几乎所有的aggs聚合查询，都支持script
 
-- ES聚合查询是由1-6%的误差的，precision_threshold参数可以减小误差，但是会增加对内存的消耗。
+- ES聚合查询是有1-6%的误差的，precision_threshold参数可以减小误差，但是会增加对内存的消耗。
 
 - precision_threshold默认值为3000，最大值为4万，一般情况下不需要特意改变。设定值越大，精度越高。但是对内存的消耗也越大，内存消耗为precision_threshold * 8 个Byte，1000*8/1000 大概8kb。如果本身数据重复度就很低，没必要设置太大，去重查询是比较消耗资源的。
 
@@ -619,39 +755,37 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
 
 ### top_hits
 
-- 取前n条数据。
+取前n条数据。按照type进行分组，按照每组数量的倒序排序，取前两个bucket（组）。并且每组内数据，按照价格倒序排序，取前两个组内明细数据。
 
-  按照type进行分组，按照每组数量的倒序排序，取前两个bucket（组）。并且每组内数据，按照价格倒序排序，取前两个组内明细数据。
-
-  ```json
-  GET product/_search
-  {
-    "size": 0,
-    "aggs": {
-      "top_tags": {
-        "terms": {
-          "field": "type.keyword",
-          "size": 2,
-          "order": {
-            "_count": "desc"
-          }
-        },
-        "aggs": {
-          "top_type": {
-            "top_hits": {
-              "size": 2,
-              "sort": [
-                {
-                  "price": "desc"
-                }
-              ]
-            }
+```json
+GET product/_search
+{
+  "size": 0,
+  "aggs": {
+    "top_tags": {
+      "terms": {
+        "field": "type.keyword",
+        "size": 2,
+        "order": {
+          "_count": "desc"
+        }
+      },
+      "aggs": {
+        "top_type": {
+          "top_hits": {
+            "size": 2,
+            "sort": [
+              {
+                "price": "desc"
+              }
+            ]
           }
         }
       }
     }
   }
-  ```
+}
+```
 
 ### filters
 
@@ -693,7 +827,8 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
 ### 深度优先、广度优先
 
 - terms桶聚合，ES基于我们的数据动态进行聚合分组构建桶，但是es并不知道会构建出多少个桶，所以会把所有的数据都拿到内存中进行计算，大多数情况下单个字段的聚合速度还是可以的，但是如果多个字段进行聚合，就会导致构建大量的组，最终有可能导致发生OOM问题。
-- 比如1万个演员，每个演员演了10部电影，要聚合演员点赞数前10的演员、并且演员点赞数前10的电影，就需要聚合1万+1万*10个组合，如果聚合的深度再多一层，聚合的组合数据量就会更大。这就会很容易导致jvm问题。
+
+  比如1万个演员，每个演员演了10部电影，要聚合演员点赞数前10的演员、并且演员点赞数前10的电影，就需要聚合1万+1万*10个组合，如果聚合的深度再多一层，聚合的组合数据量就会更大。这就会很容易导致jvm问题。
 - 深度优先：先聚合所有数据，构建一颗完整的树，再进行数据筛选、剔除无用数据。
 - 广度优先：先构建第一层的聚合结果，剔除无用数据，再进行下一层数据的聚合，就会减少内存的消耗，提升速度。但是广度优先只适用于每个组聚合数量远小于组总数的情况。
 - terms.collect_mode属性用于设置广度优先还是深度优先，默认是深度优先（depth_first），广度优先则修改为breadth_first。
@@ -716,7 +851,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
 
   ![image-20210816225430405](images/邻接矩阵.png)
 
-## 批量查询
+## 八、批量查询
 
 - mget实现批量查询，可以一次查询同一索引下的数据，也可以查询不同索引下的数据。get路径中如果包含了index，则body中可以省略。
 
@@ -762,429 +897,278 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   }
   ```
 
+## 九、脚本script
 
-## 脚本script
+Scripting是Elasticsearch支持的一种专门用于复杂场景下支持自定义编程的强大的脚本功能，ES支持多种脚本语言，如painless，其语法类似于Java，也有注释、关键字、类型、变量、函数等，相对于其他脚本高出几倍的性能，并且安全可靠，可以用于内联和存储脚本。
 
-- 查询时使用painless，source指定具体字段，使用doc['filedName'].value
+### update更新修改
 
-  ```
-  GET product/_search
-  {
-    "script_fields": {
-      "price_query": {
-        "script": {
-          "lang": "painless",
-          "source": "doc['price'].value+params.num",
-          "params": {
-            "num": 2
+```json
+#语法：ctx._source.<field-name>
+POST product/_update/2
+{
+  "script": {
+    "source": "ctx._source.price-=1"
+  }
+}
+POST product/_update/6
+{
+  "script": {
+    "lang": "painless",
+    "source": "ctx._source.tags.add('无线充电')"
+  }
+}
+```
+
+### delete删除
+
+```json
+POST product/_update/10
+{
+  "script": {
+    "lang": "painless",
+    "source": "ctx.op='delete'"
+  }
+}
+```
+
+### search查询
+
+查询时使用painless，source指定具体字段，使用doc['filedName'].value，通过params可以定义参数
+
+```json
+GET product/_search
+{
+  "script_fields": {
+    "price_query": {
+      "script": {
+        "lang": "painless",
+        "source": "doc['price'].value+params.num",#通过params.num可以设置参数
+        "params": {
+          "num": 2
+        }
+      }
+    }
+  }
+}
+```
+
+复杂查询示例
+
+```json
+GET product/_search
+{
+  "script_fields": {
+    "price": { #第一层，查询出来价格
+      "script": {
+        "lang": "painless",
+        "source": "doc['price'].value"
+      }
+    },
+    "discount_price": {
+      "script": { #第二层，基于第一层的查询结果，进行不同系数的价格计算
+        "lang": "painless",
+        "source": "[doc['price'].value* params.discount_8,doc['price'].value* params.discount_7,doc['price'].value* params.discount_6,doc['price'].value* params.discount_5]",
+        "params": {
+          "discount_8": 0.8,
+          "discount_7": 0.7,
+          "discount_6": 0.6,
+          "discount_5": 0.5
+        }
+      }
+    }
+  }
+}
+```
+
+![](images/script_复杂01.png)
+
+### scripts模板
+
+scripts脚本可以存储成模板，这样可以直接调用，否则每次查询时，都需要对脚本进行解析，存储成模板之后，方便不同的查询语句使用，也可以提升查询效率。
+
+使用的时候，用id即可
+
+```json
+POST _scripts/calculate_discount
+{
+  "script": {
+    "lang": "painless",
+    "source": "doc.price.value * params.discount"
+  }
+}
+#查看
+GET _scripts/calculate_discount
+#查询时使用
+GET product/_search
+{
+  "script_fields": {
+    "price": {
+      "script": {
+        "id": "calculate_discount",
+        "params": {
+          "discount": 0.8
+        }
+      }
+    }
+  }
+}
+```
+
+### Scripting的函数式编程
+
+当需要在script中使用复杂脚本时，需要用"""脚本"""格式，在脚本的前后各有三个双引号。
+
+```json
+#更新
+POST product/_update/1
+{
+  "script": {
+    "lang": "painless",
+    "source": """
+      ctx._source.tags.add(params.tag_name);
+      ctx._source.price-=100;
+    """,
+    "params": {
+      "tag_name": "无线秒充1"
+    }
+  }
+}
+POST product/_update/3
+{
+  "script": {
+    "lang": "painless",
+    "source": """
+      if(ctx._source.name ==~ /[\s\S]*小米[\s\S]*/) {
+        ctx._source.name+="***|"
+      }else{
+        ctx.op="noop"
+      }
+    """
+  }
+}
+#查询
+GET product/_search
+{
+  "query": {
+    "constant_score": {
+      "filter": {
+        "range": {
+          "price": {
+            "lte": 1000
           }
         }
       }
     }
-  }
-  ```
-
-
-
-## 相关性得分原理及排序规则优化
-
-### 1、analyzer和search_analyzer
-
-- analyzer：创建索引时，指定了analyzer分析器。会在插入数据的时候，根据指定的分析器进行分词，创建倒排索引。
-- search_analyzer：在使用关键词进行搜索时，会使用search_analyzer分析器对关键词进行分词。如果没有特殊指定，一般情况下search_analyzer和analyzer是相同的，并且在查询mapping时，只会将两者不同的search_analyzer进行展示。
-- ![image-20210810213509844](images/analyzer-1.png)
-
-### 2、shard local IDF和global IDF（多shard下评分不准确问题解析）
-
-- ES在计算相关性得分score时，会遵循三个条件：TF、IDF、相同条件下数据短的评分高。IDF评分是计算词条在当前分片下整个索引内的相关性，如果词频非常高，那么IDF评分就会比较低。所以如果数据分配不均，就会出现多shard下评分不准确的问题。比如某个分片下1万条数据，另一个分片下只10条数据，那么同一关键词在不同shard下的IDF评分就不同，当发生跨分片查询数据的情况时，就会导致数据不准确。
-- 解决：各个分片大小尽量设置成一样大，并且生产环境极少出现这种问题，因为生产环境数据量大，各个分片配置的比较合理，最终误差会非常小。
-- ![image-20210810214740182](images/IDF-1.png)
-
-### 3、multi_match多字段搜索
-
-- 测试数据
-
-  ```json
-  注意：中文分词需要把吃鸡、手机、快充、超级设置为热词。
-  PUT score
-  {
-    "mappings": {
-      "properties": {
-        "name": {
-          "type": "text",
-          "analyzer": "ik_max_word",
-          "search_analyzer": "ik_max_word"
-        },
-        "desc":{
-          "type": "text",
-          "analyzer": "ik_max_word",
-          "search_analyzer": "ik_max_word"
+  },
+  "aggs": {
+    "tag_agg": {
+      "sum": {
+        "script": {
+          "lang": "painless",
+          "source": """
+            int total = 0;
+            for(int i = 0; i <doc['tags.keyword'].length; i++){
+              total++;
+            }
+            return total;
+          """
         }
       }
     }
   }
-  PUT /score/_doc/1
-  {
-    "name": "吃鸡手机，游戏神器，超级",
-    "desc": "基于TX深度定制，流畅游戏不发热，物理外挂，快充",
-    "price": 3999,
-    "createtime": "2020-05-20",
-    "collected_num": 99,
-    "tags": [
-      "性价比",
-      "发烧",
-      "不卡"
-    ]
-  }
-  PUT /score/_doc/2
-  {
-    "name": "小米NFC手机",
-    "desc": "支持全功能NFC,专业吃鸡，快充",
-    "price": 4999,
-    "createtime": "2020-05-20",
-    "collected_num": 299,
-    "tags": [
-      "性价比",
-      "发烧",
-      "公交卡"
-    ]
-  }
-  PUT /score/_doc/3
-  {
-    "name": "NFC手机，超级",
-    "desc": "手机中的轰炸机",
-    "price": 2999,
-    "createtime": "2020-05-20",
-    "collected_num": 1299,
-    "tags": [
-      "性价比",
-      "发烧",
-      "门禁卡"
-    ]
-  }
-  PUT /score/_doc/4
-  {
-    "name": "小米耳机",
-    "desc": "耳机中的黄焖鸡",
-    "price": 999,
-    "createtime": "2020-05-20",
-    "collected_num": 9,
-    "tags": [
-      "低调",
-      "防水",
-      "音质好"
-    ]
-  }
-  PUT /score/_doc/5
-  {
-    "name": "红米耳机",
-    "desc": "耳机中的肯德基",
-    "price": 399,
-    "createtime": "2020-05-20",
-    "collected_num": 0,
-    "tags": [
-      "牛逼",
-      "续航长",
-      "质量好"
-    ]
-  }
-  ```
+}
+```
 
-- 相关性分数计算规则
+## 十、multi_match多字段搜索
 
-  ```
-  搜索关键词：吃鸡手机
-  GET score/_search
-  {
-    "query": {
-      "bool": {
-        "should": [
-          {"match": {"name": "吃鸡手机"}},
-          {"match": {"desc": "吃鸡手机"}}
-        ]
-      }
+multi_match 与 match 类似，不同的是它可以在多个字段中查询。
+
+```json
+GET score/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "超级快充",
+      "fields": ["name","desc"],
+      "type": "most_fields",
+      "tie_breaker": 0.3
     }
   }
-  结果分析：
-  期望的匹配结果是doc1>doc2>doc3
-  TF/IDF:
-  TF: 关键词在每个doc中出现的次数
-  IDF: 关键词在整个索引中出现的次数
-  relevance score计算规则：每个query的分数，乘以matched query数量，除以总query数量
-  1.它会执行 should 语句中的两个查询。
-  2.加和两个查询的评分。
-  3.乘以匹配语句的总数。
-  4.除以所有语句总数
-  算一下doc1的分数
-  {"match": {"name": "吃鸡手机"}},
-  	doc1:	吃鸡1次，手机1次，计2分	
-  	doc2:	吃鸡0次，手机1次，计1分
-  	doc3:	吃鸡0次，手机1次，计1分
-  {"match": {"desc": "吃鸡手机"}}
-  	doc1:	吃鸡0次，手机0次，计0分	
-  	doc2:	吃鸡0次，手机1次，计1分
-  	doc3:	吃鸡0次，手机1次，计1分
-  总分：（query1+query2）*matched query / total query
-  	doc1:	query1+query2：2		matched：1	total query：2		result：2*1/2=1
-  	doc2:	query1+query2：2		matched：2	total query：2		result：2*2/2=2
-  	doc3:	query1+query2：2		matched：2	total query：2		result：2*2/2=2
-  matched query数量 = 2
-  总query数量 = 2
-  ```
+}
+```
 
-  ![image-20210810224116296](images/multi-1.png)
-
-  因为相关性评分的计算规则，最应该匹配的doc1，相关性反而最低。结果是错误的。
+multi_match的匹配策略包括best_fields、most_fields、cross_fields，默认的是best_fields。
 
 - best_fields
 
   默认的搜索策略。对于同一个query，单个field匹配更多的term，则优先排序。当查询多个字段时，如果关键词在某个字段中被匹配的次数比较多，则这个字段是best_ields，最好的字段。其余字段匹配的相关性分数就会被忽略，这个词条的相关性分数就会以best_fields为准。
 
-  使用dis_max，默认的搜索策略是best_fields。因为name这个字段，匹配“吃鸡手机”次数最多，score评分最高，所以是best_fields.
-
-  ![image-20210810224445067](images/multi-2.png)
-
 - most_fields
 
-  如果一次请求中，对于同一个doc，匹配到某个term的field越多，则越优先排序。比如doc1，四个字段匹配到了关键词，doc2是3个字段匹配到了关键词。那么doc1优先展示。因为匹配的field最多。
+  如果一次请求中，对于同一个doc，匹配到某个term的field越多，则越优先排序。例如doc1，四个字段匹配到了关键词，doc2是3个字段匹配到了关键词。那么doc1优先展示。因为匹配的field最多。
 
 - cross_fields
-
-  测试数据：
-
-  ```json
-  POST /teacher/_bulk
-  { "index": { "_id": "1"} }
-  { "name" : {"姓" : "吴", "名" : "磊"} }
-  { "index": { "_id": "2"} }	
-  { "name" : {"姓" : "连", "名" : "鹏鹏"} }
-  { "index": { "_id": "3"} }
-  { "name" : { "姓" : "张","名" : "明明"} }
-  { "index": { "_id": "4"} }
-  { "name" : { "姓" : "周","名" : "志志"} }
-  { "index": { "_id": "5"} }
-  { "name" : {"姓" : "吴", "名" : "亦凡"} }
-  { "index": { "_id": "6"} }
-  { "name" : {"姓" : "吴", "名" : "京"} }
-  { "index": { "_id": "7"} }
-  { "name" : {"姓" : "吴", "名" : "彦祖"} }
-  { "index": { "_id": "8"} }
-  { "name" : {"姓" : "帅", "名" : "吴"} }
-  { "index": { "_id": "9"} }
-  { "name" : {"姓" : "连", "名" : "磊"} }
-  { "index": { "_id": "10"} }
-  { "name" : {"姓" : "周", "名" : "磊"} }
-  { "index": { "_id": "11"} }
-  { "name" : {"姓" : "张", "名" : "磊"} }
-  { "index": { "_id": "12"} }
-  { "name" : {"姓" : "马", "名" : "磊"} }
-  { "name" : {"姓" : "诸葛", "名" : "吴磊"} }
-  ```
-
-  ```json
-  GET teacher/_search
-  {
-    "query": {
-      "multi_match": {
-        "query": "吴磊",
-        "type": "most_fields",
-        "fields": [
-          "name.姓",
-          "name.名"
-        ]
-      }
-    }
-  }
-  ```
-
-  使用默认搜索策略或者most_fields进行搜索时，期望的吴磊不会在第一条。因为相关性评分有问题。在姓中，“吴”比较多，所以IDF会比较低，相反在名中IDF就会比较高。对于名“磊”，在名中IDF分低，姓中分高，所以就会导致问题。
 
   cross_fields交叉的字段。含义是关键词分词之后，每个关键字，必须在其中至少一个字段中匹配。
 
   比如“吴磊”，使用cross_fields策略，会产生俩个条件:
-
+  
   1、姓或者名中,必须有吴
   2、姓或者名中,必须有磊
-
+  
   默认是或操作。满足一条就行,存在吴,或者磊即可。可以使用and操作,只有两条都满足,存在完整的吴磊，才可以。
+  
+  ![](images/cross-1.png)
+  
 
-  ![image-20210811205415883](images/cross-1.png)
+## 十一、dis_max
 
-- dix_max
-
-  dix_max查询（Disjunction Max Query）：将任何与任一查询匹配的文档作为结果返回，但只将最佳匹配的评分作为查询的评分结果返回。比如查询时name、desc两个字段，name的评分结果比desc高，则以name的评分为准进行返回，desc字段的评分将被忽略。
-
-  dix_max默认的best_fields策略，会带来一个问题，当搜索词在fields字段中全部存在时，只会以其中一个字段的评分为准，当doc1只匹配一个字段，但是评分高，doc2匹配的2个字段，正常情况下，匹配2个字段的应该优先展示，但是因为best_fields策略，导致其余字段不参与评分，最终结果不准确。所以可以使用tie_breaker设置其余字段的参与度，官方建议0.1-0.4之间。太大的话，有可能导致喧宾夺主。
-
-  ```json
-  GET score/_search
-  {
-    "query": {
-      "dis_max": {
-        "queries": [
-          {
-            "match": {
-              "name": "超级快充"
-            }
-          },
-          {
-            "match": {
-              "desc": "超级快充"
-            }
-          }
-        ],
-        "tie_breaker": 0.3
-      }
+```json
+GET product/_search
+{
+  "query": {
+    "dis_max": {
+      "tie_breaker": 0.7,
+      "boost": 1.2,
+      "queries": []
     }
   }
-  ```
+}
+```
+
+dis_max查询（Disjunction Max Query）：将任何与任一查询匹配的文档作为结果返回，但只将最佳匹配的评分作为查询的评分结果返回。比如查询时name、desc两个字段，name的评分结果比desc高，则以name的评分为准进行返回，desc字段的评分将被忽略。
+
+dix_max默认的best_fields策略，会带来一个问题，当搜索词在fields字段中全部存在时，只会以其中一个字段的评分为准，当doc1只匹配一个字段，但是评分高，doc2匹配的2个字段，正常情况下，匹配2个字段的应该优先展示，但是因为best_fields策略，导致其余字段不参与评分，最终结果不准确。所以可以使用tie_breaker设置其余字段的参与度，官方建议0.1-0.4之间。太大的话，有可能导致喧宾夺主。
 
 - tie_breaker
 
   取值范围 [0,1]，其中 0 代表使用 dis_max 最佳匹配语句的普通逻辑，1表示所有匹配语句同等重要。最佳的精确值需要根据数据与查询调试得出，但是合理值应该与零接近（处于 0.1 - 0.4 之间），这样就不会颠覆 dis_max 最佳匹配性质的根本。
 
-- multi_match
-
-  ```json
-  GET score/_search
-  {
-    "query": {
-      "multi_match": {
-        "query": "超级快充",
-        "fields": ["name","desc"],
-        "type": "most_fields",
-        "tie_breaker": 0.3
-      }
+```json
+GET score/_search
+{
+  "query": {
+    "dis_max": {
+      "queries": [
+        {
+          "match": {
+            "name": "超级快充"
+          }
+        },
+        {
+          "match": {
+            "desc": "超级快充"
+          }
+        }
+      ],
+      "tie_breaker": 0.3
     }
   }
-  ```
+}
+```
 
-
-### 4、function score query
-
-- 必须定义一个查询和一个或多个函数，自定义函数会为查询返回的每个文档计算一个新分数。
-
-  ```json
-  {
-  	"query": {
-  		"function_score": {
-  			"query": {},
-  			"functions": [
-  				{}
-  			]
-  		}
-  	}
-  }
-  ```
-
-1. field_value_factor
-
-   ```json
-   {
-   	"query": {
-   		"function_score": {
-   			"query": {
-   				"match_all": {}
-   			},
-   			"functions": [
-   				{
-   					"field_value_factor": {
-   						"field": "collected_num",
-   						"modifier": "ln2p",
-   						"factor": 1.2
-   					},
-   					"weight": 1
-   				}
-   			]
-   		}
-   	}
-   }
-   ```
-
-   将某个字段的值进行计算得出分数。
-
-   - field：要计算的字段，（需要是数值型）
-   - factor：当前分数计算，对整个结果产生的权重比。
-   - modifier：以何种运算方式计算，接受以下枚举。
-     1. none：不处理
-     2. log：计算对数
-     3. log1p：先将字段值 +1，再计算对数
-     4. log2p：先将字段值 +2，再计算对数
-     5. ln：计算自然对数
-     6. ln1p：先将字段值 +1，再计算自然对数
-     7. ln2p：先将字段值 +2，再计算自然对数
-     8. square：计算平方
-     9. sqrt：计算平方根
-     10. reciprocal：计算倒数
-   - weight：当前的分数计算函数，对整个结果产生的权重比。
-
-2. random_score
-
-   随机得到 0 到 1 分数。
-
-   ```json
-   {
-   	"query": {
-   		"function_score": {
-   			"query": {
-   				"match_all": {}
-   			},
-   			"random_score": {}
-   		}
-   	}
-   }
-   ```
-
-3. script_score
-
-   通过自定义脚本计算分值
-
-   ```json
-   {
-   	"query": {
-   		"function_score": {
-   			"query": {
-   				"match_all": {}
-   			},
-   			"script_score": {
-   				"script": {
-   					"source": "Math.log(1 + doc['price'].value)"
-   				}
-   			}
-   		}
-   	}
-   }
-   ```
-
-4. boost_mode
-
-   指定计算后的分数与原始的_score如何合并，有以下选项：
-
-   1. imultiply：查询分数和函数分数相乘
-   2. sum：查询分数和函数分数相加
-   3. avg：取平均值
-   4. replace：替换原始分数
-   5. min：取查询分数和函数分数的最小值
-   6. max：取查询分数和函数分数的最大值
-
-   ```json
-   {
-   	"query": {
-   		"function_score": {
-   			"query": {
-   				"match_all": {}
-   			},
-   			"boost_mode": "multiply"
-   		}
-   	}
-   }
-   ```
-
-5. max_boost
-
-   设置相关性分数的上限，比如"max_boost": 10，则计算的相关性分数最大为10，超过的限制为10，小于10的，仍然是原数据。
-
-## Nested Search复杂类型查询
+## 十二、Nested Search复杂类型查询
 
 ### 1、基本概念
 
@@ -1260,7 +1244,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   {
   	"mappings": {
   		"properties": {
-  			"goods_list": {
+  			"goods_list": { #嵌套类型
   				"type": "nested",
   				"properties": {
   					"name": {
@@ -1283,7 +1267,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   }
   ```
 
-  goods_list为nested查询，所以要查询goods_list数据时，要使用nested，并且path使用goods_list。
+  创建mapping时，goods_list为nested类型，所以要查询goods_list数据时，要使用nested，并且path使用goods_list。
 
   正确的查询结果
 
@@ -1476,7 +1460,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   4.	none：不要使用匹配的子对象的相关性分数。该查询为父文档分配得分为0。
   5.	sum：将所有匹配的子对象的相关性得分相加。
 
-## Join查询
+## 十三、Join查询
 
 ### 基本概念
 
@@ -1612,7 +1596,7 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
    }
    ```
 
-## 高亮查询
+## 十四、高亮查询
 
 - 查询结果中关键词高亮显示，一般使用默认配置即可。
 
@@ -1666,7 +1650,5 @@ ES提供默认的聚合扩展实现，比如数值型，可以单独查询min、
   }
   ```
 
-  ![image-20210815121901367](images/high-light-.png)
-
-## 
+  ![](images/high-light-.png)
 
