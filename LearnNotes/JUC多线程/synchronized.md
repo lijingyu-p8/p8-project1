@@ -46,7 +46,7 @@ synchronized是基于对象实现的，先了解对象再内存中是如何存�
 
 - 对象标记Mark Word
 
-  ![](D:/ProjectDev/p8-project1/LearnNotes/JUC多线程/images/对象标记-1.png)
+  ![](images/对象标记-1.png)
 
   ![](images/对象标记-2.png)
 
@@ -172,7 +172,7 @@ synchronized用的锁是存在Java对象头里的Mark Word中，锁升级功能�
 
   2. 第一个线程执行完成synchronized方法(退出同步块)，则将对象头设置成无锁状态并撤销偏向锁，重新偏向 。
 
-     ![](D:/ProjectDev/p8-project1/LearnNotes/JUC多线程/images/偏向锁-2.png)
+     ![](images/偏向锁-2.png)
 
 - **轻量级锁**
 
