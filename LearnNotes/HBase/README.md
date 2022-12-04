@@ -74,8 +74,13 @@ Hbase中的数据是按照RowKey、多个列族、以及列族下多个列的形
   HBase 对于数据的读写操作是直接访问 Zookeeper 的，在 2.3 版本推出 Master Registry模式，客户端可以直接访问 master。使用此功能，会加大对 master 的压力，减轻对 Zookeeper的压力。
 
   1. 保证任何时候，集群中只有一个活跃master
-  2. 存储所有region的寻址入口
+
+  2. 存储所有region的寻址入口，客户端从zookeeper中获取meta表所在的regionserver节点信息，找到meta表在哪里之后，访问meta表所在的regionserver节点，通过meta表获取到region所在的regionserver信息。
+
+     也就是说，zookeeper只存储meta表在哪个Region Server上
+
   3. 实时监控region server的上线和下线信息，并实时通知master
+
   4. 存储HBase的schema和table元数据
 
 - Master
