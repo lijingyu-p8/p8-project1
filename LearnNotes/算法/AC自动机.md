@@ -1,4 +1,4 @@
-# AC自动机
+# Aho-Corasick automaton（AC自动机）
 
 在以下使用场景中可大幅度提高效率：
 
