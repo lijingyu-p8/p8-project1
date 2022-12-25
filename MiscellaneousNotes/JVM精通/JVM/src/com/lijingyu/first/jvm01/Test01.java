@@ -3,6 +3,7 @@ package com.lijingyu.first.jvm01;
 public class Test01 {
 
 }
+
 //idea的jclasslib插件可以查看都代表了什么意思
 //cafe babe 0000 0034 0010 0700 0201 0019
 //636f 6d2f 6c69 6a69 6e67 7975 2f6a 766d
