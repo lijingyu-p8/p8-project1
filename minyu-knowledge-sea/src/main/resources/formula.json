@@ -1,0 +1,24 @@
+{
+  "sort_strategy": {
+    "first_sort": "xxxxxxxxxxxxx",
+    "second_sort": "xxxxxxxxxxxxxxx"
+  },
+  "recall": [
+    {
+      "service_name_es": {
+        "first_sort": "xxxxxxxxxxxxx",
+        "second_sort": "xxxxxxxxxxxxxxx",
+        "percent": "50%"
+      }
+    },
+    {
+      "service_name_milvus": {
+        "second_sort": "xxxxxxxxxxxxxxx",
+        "percent": "50%"
+      }
+    }
+  ],
+  "merge": {
+
+  }
+}
