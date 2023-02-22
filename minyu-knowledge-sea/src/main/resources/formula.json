@@ -6,19 +6,19 @@
   "recall": [
     {
       "service_name_es": {
-        "first_sort": "xxxxxxxxxxxxx",
-        "second_sort": "xxxxxxxxxxxxxxx",
-        "percent": "50%"
+        "sort": "first_sort",
+        "size": "1000"
       }
     },
     {
       "service_name_milvus": {
-        "second_sort": "xxxxxxxxxxxxxxx",
-        "percent": "50%"
+        "sort": "first_sort",
+        "size": "600"
       }
     }
   ],
   "merge": {
-
+    "sort": "second_sort",
+    "size": "1000"
   }
 }
