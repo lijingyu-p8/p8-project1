@@ -1,6 +1,7 @@
 package com.minyu.knowledge.sea.aviator.es;
 
 import co.elastic.clients.elasticsearch._types.Script;
+import com.alibaba.fastjson2.JSONObject;
 import com.minyu.knowledge.sea.aviator.RequestContext;
 
 /**
@@ -14,7 +15,10 @@ public interface EsScriptRecallBoost {
      * 构建混合评分
      *
      * @param requestContext
+     * @param jsonObject
      * @return
      */
-    Script buildScriptMixBoost(RequestContext requestContext);
+    Script buildScriptMixBoost(RequestContext requestContext, JSONObject jsonObject);
+
+    String functionName();
 }

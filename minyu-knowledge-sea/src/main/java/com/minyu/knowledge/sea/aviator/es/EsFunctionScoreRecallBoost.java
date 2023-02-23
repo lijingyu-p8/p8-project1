@@ -25,4 +25,6 @@ public interface EsFunctionScoreRecallBoost {
      * @return
      */
     double reScore(double originScore);
+
+    String functionName();
 }

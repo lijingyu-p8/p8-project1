@@ -1,12 +1,21 @@
 {
-  "sort_strategy": {
-    "first_sort": "xxxxxxxxxxxxx",
-    "second_sort": "xxxxxxxxxxxxxxx"
-  },
   "recall": [
     {
       "service_name_es": {
-        "sort": "first_sort",
+        "sort": [
+          {
+            "functionName": "termsWeight",
+            "fieldName": "confirmDate",
+            "fieldValues": [
+              "01",
+              "02"
+            ],
+            "positive": "1.0",
+            "negative": "0.8"
+          }
+        ],
+        "boost_mode": "multiply",
+        "type": "functionScore",
         "size": "1000"
       }
     },
@@ -18,6 +27,10 @@
     }
   ],
   "merge": {
+    "field": [
+      "confirmDate",
+      "coType"
+    ],
     "sort": "second_sort",
     "size": "1000"
   }
