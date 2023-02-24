@@ -12,6 +12,13 @@
             ],
             "positive": "1.0",
             "negative": "0.8"
+          },
+          {
+            "functionName": "termsWeight",
+            "fieldName": "workFunc",
+            "fieldValues": "expWorkFunc",
+            "positive": "1.0",
+            "negative": "0.8"
           }
         ],
         "boost_mode": "multiply",

@@ -6,4 +6,5 @@ package com.minyu.knowledge.sea.aviator.recall;
  * @CreateTime: 2023-02-23  23:03
  */
 public class ReCallSortBuilder {
+
 }

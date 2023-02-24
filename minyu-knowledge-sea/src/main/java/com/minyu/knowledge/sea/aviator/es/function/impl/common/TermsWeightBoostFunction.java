@@ -1,12 +1,12 @@
-package com.minyu.knowledge.sea.aviator.es.common;
+package com.minyu.knowledge.sea.aviator.es.function.impl.functionscore.common;
 
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.Script;
 import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
 import com.alibaba.fastjson2.JSONObject;
 import com.minyu.knowledge.sea.aviator.RequestContext;
-import com.minyu.knowledge.sea.aviator.es.EsFunctionScoreRecallBoost;
-import com.minyu.knowledge.sea.aviator.es.EsScriptRecallBoost;
+import com.minyu.knowledge.sea.aviator.es.function.intf.EsFunctionScoreRecallBoost;
+import com.minyu.knowledge.sea.aviator.es.function.intf.EsScriptRecallBoost;
 
 /**
  * @Description: TODO
@@ -16,12 +16,12 @@ import com.minyu.knowledge.sea.aviator.es.EsScriptRecallBoost;
 public class TermsWeightBoostFunction implements EsFunctionScoreRecallBoost, EsScriptRecallBoost {
 
     @Override
-    public FunctionScore buildFunctionScoreBoost(RequestContext requestContext) {
+    public FunctionScore buildFunctionScoreBoost(RequestContext requestContext, JSONObject jsonObject) {
         return null;
     }
 
     @Override
-    public double reScore(double originScore) {
+    public double reScore(double originScore, JSONObject jsonObject) {
         return 0;
     }
 

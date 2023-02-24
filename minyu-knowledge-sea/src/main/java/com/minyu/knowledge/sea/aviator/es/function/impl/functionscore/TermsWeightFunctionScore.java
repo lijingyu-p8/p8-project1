@@ -1,4 +1,4 @@
-package com.minyu.knowledge.sea.aviator.es.function;
+package com.minyu.knowledge.sea.aviator.es.function.impl.functionscore;
 
 /**
  * @Description: TODO

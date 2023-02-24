@@ -1,6 +1,7 @@
-package com.minyu.knowledge.sea.aviator.es;
+package com.minyu.knowledge.sea.aviator.es.function.intf;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import com.alibaba.fastjson2.JSONObject;
 import com.minyu.knowledge.sea.aviator.RequestContext;
 
 /**
@@ -16,7 +17,7 @@ public interface EsFunctionScoreRecallBoost {
      * @param requestContext
      * @return
      */
-    FunctionScore buildFunctionScoreBoost(RequestContext requestContext);
+    FunctionScore buildFunctionScoreBoost(RequestContext requestContext, JSONObject jsonObject);
 
     /**
      * 分数还原
@@ -24,7 +25,12 @@ public interface EsFunctionScoreRecallBoost {
      * @param originScore
      * @return
      */
-    double reScore(double originScore);
+    double reScore(double originScore, JSONObject jsonObject);
 
+    /**
+     * 函数名称
+     *
+     * @return
+     */
     String functionName();
 }
