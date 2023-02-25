@@ -1,4 +1,4 @@
-package com.minyu.knowledge.sea.aviator.es.function.impl.functionscore.common;
+package com.minyu.knowledge.sea.aviator.es.function.impl.common;
 
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.Script;
