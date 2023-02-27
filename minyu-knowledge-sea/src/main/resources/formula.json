@@ -2,7 +2,18 @@
   "recall": [
     {
       "service_name_es": {
-        "sort": [
+        "absolute_sort": [
+          {
+            "functionName": "termsWeight",
+            "fieldName": "confirmDate",
+            "fieldValues": [
+              "01",
+              "02"
+            ],
+            "positive": "ASC"
+          }
+        ],
+        "mix_sort": [
           {
             "functionName": "termsWeight",
             "fieldName": "confirmDate",
@@ -38,7 +49,18 @@
       "confirmDate",
       "coType"
     ],
-    "sort": "second_sort",
+    "absolute_sort": [
+      {
+        "functionName": "termsWeight",
+        "fieldName": "confirmDate",
+        "fieldValues": [
+          "01",
+          "02"
+        ],
+        "positive": "ASC"
+      }
+    ],
+    "mix_sort": "second_sort",
     "size": "1000"
   }
 }
