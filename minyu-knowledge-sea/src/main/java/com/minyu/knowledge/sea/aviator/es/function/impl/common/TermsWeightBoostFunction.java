@@ -40,4 +40,9 @@ public class TermsWeightBoostFunction implements EsFunctionScoreRecallBoost, EsS
     public String functionName() {
         return "termsWeight";
     }
+
+    @Override
+    public String getDescribe() {
+        return null;
+    }
 }

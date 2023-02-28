@@ -9,7 +9,7 @@ import com.minyu.knowledge.sea.aviator.RequestContext;
  * @Author: lijingyu
  * @CreateTime: 2023-02-22  22:47
  */
-public interface EsScriptRecallBoost {
+public interface EsScriptRecallBoost extends FunctionDescribe{
 
     /**
      * 构建混合评分

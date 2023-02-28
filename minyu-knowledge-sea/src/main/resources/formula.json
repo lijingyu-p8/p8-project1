@@ -19,7 +19,8 @@
             "fieldName": "confirmDate",
             "fieldValues": [
               "01",
-              "02"
+              "02",
+              "getFixValue(getFixValue(\"1,2\") + \",10\")"
             ],
             "positive": "1.0",
             "negative": "0.8"
@@ -27,7 +28,7 @@
           {
             "functionName": "termsWeight",
             "fieldName": "workFunc",
-            "fieldValues": "expWorkFunc",
+            "fieldValues": "getExpContext(\"workFunc\")",
             "positive": "1.0",
             "negative": "0.8"
           }
