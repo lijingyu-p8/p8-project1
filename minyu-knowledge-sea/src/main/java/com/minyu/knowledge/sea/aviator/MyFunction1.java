@@ -1,17 +1,12 @@
 package com.minyu.knowledge.sea.aviator;
 
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONObject;
 import com.googlecode.aviator.AviatorEvaluator;
 import com.googlecode.aviator.runtime.function.AbstractFunction;
-import com.googlecode.aviator.runtime.type.AviatorJavaType;
 import com.googlecode.aviator.runtime.type.AviatorObject;
 import com.googlecode.aviator.runtime.type.AviatorString;
-import com.minyu.knowledge.sea.aviator.sort.AbsoluteSort;
 import com.minyu.knowledge.sea.aviator.util.ExecteFormula;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,6 +28,7 @@ public class MyFunction1 extends AbstractFunction {
 
     public static void main(String[] args) {
         AviatorEvaluator.addFunction(new MyFunction1());
+
 //        JSONObject jsonObject = new JSONObject();
 //        List<String> categoryList = FunctionTypeRel.categoryList;
 //        List<Formula> formulas = new ArrayList<>();
